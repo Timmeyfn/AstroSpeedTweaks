@@ -2,3 +2,6 @@ dist/
 *.syso
 ui/preview/
 *.exe
+installer/setup/app_payload.bin
+installer/setup/icon*.png
+installer/setup/AstroSpeed-Setup.exe

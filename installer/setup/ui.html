@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#F1EEE7;--card:#FAF8F4;--ink:#141518;--ink2:#5A5E65;--ink3:#8A8E95;--line:rgba(20,21,24,.1);--accent:#E2542A}
+  html,body{height:100%}
+  body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;overflow:hidden;-webkit-user-select:none;user-select:none}
+  .hero{display:flex;align-items:center;gap:14px;padding:26px 30px 0}
+  .mark{width:46px;height:46px;flex:none;border-radius:13px;background:var(--ink);display:grid;place-items:center;box-shadow:0 8px 22px -10px rgba(20,21,24,.5)}
+  .mark svg{width:26px;height:26px}
+  .brand b{font-size:19px;font-weight:800;letter-spacing:-.02em;display:block;line-height:1.1}
+  .brand span{font-size:12.5px;color:var(--ink3);font-weight:600}
+  .stage{flex:1;padding:22px 30px;display:flex;flex-direction:column;animation:in .5s cubic-bezier(.16,1,.3,1)}
+  @keyframes in{from{opacity:0;transform:translateY(10px)}}
+  h1{font-size:23px;font-weight:800;letter-spacing:-.03em;margin-bottom:8px}
+  p{font-size:14px;color:var(--ink2);line-height:1.5;max-width:460px}
+  .opt{margin-top:auto;display:flex;flex-direction:column;gap:12px;padding-top:18px}
+  label.check{display:flex;align-items:center;gap:11px;font-size:14px;font-weight:600;cursor:pointer}
+  label.check input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
+  .path{font-size:12px;color:var(--ink3);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-family:ui-monospace,Consolas,monospace;word-break:break-all}
+  .foot{display:flex;gap:10px;justify-content:flex-end;padding:16px 30px 26px;border-top:1px solid var(--line);background:var(--card)}
+  .btn{height:42px;padding:0 22px;border:0;border-radius:999px;font:inherit;font-weight:700;font-size:14.5px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:transform .4s cubic-bezier(.16,1,.3,1),box-shadow .3s}
+  .btn.primary{background:var(--ink);color:var(--bg);box-shadow:0 8px 22px -10px rgba(20,21,24,.6)}
+  .btn.primary:hover{transform:translateY(-2px)}
+  .btn.primary:disabled{opacity:.5;transform:none;cursor:default}
+  .btn.ghost{background:transparent;color:var(--ink2)}
+  .btn.ghost:hover{color:var(--ink)}
+  .spin{width:52px;height:52px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--accent);animation:sp .8s linear infinite;margin:10px 0 20px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .ring{width:62px;height:62px;margin:6px 0 18px}
+  .ring circle{fill:none;stroke:var(--line);stroke-width:5}
+  .ring path{fill:none;stroke:#2E8A57;stroke-width:5;stroke-linecap:round;stroke-dasharray:40;stroke-dashoffset:40;animation:draw .6s .1s cubic-bezier(.16,1,.3,1) forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .center{align-items:flex-start}
+  .err{color:#C43D49;font-weight:600;font-size:13px;margin-top:12px}
+</style>
+</head>
+<body>
+  <div class="hero">
+    <div class="mark"><svg viewBox="0 0 24 24"><path d="M21 3 3 10.5l7.5 2.5L13 21z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.5 13 4-4" stroke="#fff" stroke-width="1.7"/></svg></div>
+    <div class="brand"><b>AstroSpeed Tweaks</b><span>Setup &middot; version {{VERSION}}</span></div>
+  </div>
+  <div class="stage" id="stage"></div>
+  <div class="foot" id="foot"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let state = { desktop: true, launch: true, dir: '' };
+
+function render(page) {
+  const s = $('stage'), f = $('foot');
+  if (page === 'welcome') {
+    s.className = 'stage';
+    s.innerHTML = `<h1>Install AstroSpeed Tweaks</h1>
+      <p>This adds AstroSpeed to your PC and puts it in the Start Menu, so you can open it any time and get a proper uninstall option. It installs just for you &mdash; no administrator password needed to install.</p>
+      <div class="opt">
+        <label class="check"><input type="checkbox" id="cbDesk" ${state.desktop?'checked':''}> Also add a shortcut to my Desktop</label>
+      </div>`;
+    f.innerHTML = `<button class="btn ghost" onclick="cancel()">Cancel</button><button class="btn primary" onclick="install()">Install</button>`;
+    $('cbDesk').onchange = e => state.desktop = e.target.checked;
+  }
+  else if (page === 'installing') {
+    s.className = 'stage center';
+    s.innerHTML = `<div class="spin"></div><h1>Installing&hellip;</h1><p>Copying AstroSpeed and creating your shortcuts. This only takes a moment.</p>`;
+    f.innerHTML = `<button class="btn primary" disabled>Install</button>`;
+  }
+  else if (page === 'done') {
+    s.className = 'stage center';
+    s.innerHTML = `<svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29"/><path d="m20 33 8 8 16-17"/></svg>
+      <h1>All done</h1><p>AstroSpeed Tweaks is installed and ready.</p>
+      <div class="path">${state.dir}</div>
+      <div class="opt"><label class="check"><input type="checkbox" id="cbRun" ${state.launch?'checked':''}> Open AstroSpeed Tweaks now</label></div>`;
+    f.innerHTML = `<button class="btn primary" onclick="finish()">Finish</button>`;
+    $('cbRun').onchange = e => state.launch = e.target.checked;
+  }
+  else if (page === 'error') {
+    s.className = 'stage';
+    s.innerHTML = `<h1>Couldn't install</h1><p>Something stopped the install. You can try again, or just run the app on its own.</p><div class="err" id="errmsg"></div>`;
+    f.innerHTML = `<button class="btn ghost" onclick="cancel()">Close</button><button class="btn primary" onclick="install()">Try again</button>`;
+  }
+}
+
+async function install() {
+  render('installing');
+  try {
+    const r = await window.setupInvoke('install', JSON.stringify({ desktop: state.desktop }));
+    if (r && r.ok) { state.dir = r.dir; render('done'); }
+    else { render('error'); $('errmsg').textContent = (r && r.error) || 'Unknown error'; }
+  } catch (e) { render('error'); $('errmsg').textContent = String(e); }
+}
+function finish() { window.setupInvoke('finish', JSON.stringify({ launch: state.launch })); }
+function cancel() { window.setupInvoke('cancel', '{}'); }
+render('welcome');
+</script>
+</body>
+</html>
