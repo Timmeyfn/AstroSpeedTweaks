@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#20232B"/>
+      <stop offset="1" stop-color="#0B0C10"/>
+    </linearGradient>
+    <linearGradient id="streak" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FF6B3F" stop-opacity="0"/>
+      <stop offset="0.65" stop-color="#FF7A45" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FFC59E"/>
+    </linearGradient>
+    <radialGradient id="head" cx="0.4" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.45" stop-color="#FFD9C2"/>
+      <stop offset="1" stop-color="#FF6B3F"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FF7A45" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FF7A45" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="sq"><rect width="256" height="256" rx="58"/></clipPath>
+  </defs>
+  <g clip-path="url(#sq)">
+    <rect width="256" height="256" fill="url(#bg)"/>
+    <circle cx="58" cy="62" r="3" fill="#fff" opacity=".7"/>
+    <circle cx="96" cy="38" r="2" fill="#fff" opacity=".5"/>
+    <circle cx="208" cy="196" r="2.5" fill="#fff" opacity=".45"/>
+    <circle cx="44" cy="150" r="2" fill="#fff" opacity=".4"/>
+    <path d="M38 214 L170 84 L182 96 Z" fill="url(#streak)"/>
+    <path d="M70 226 L176 120 L184 130 Z" fill="url(#streak)" opacity=".75"/>
+    <path d="M28 180 L150 74 L158 82 Z" fill="url(#streak)" opacity=".6"/>
+    <circle cx="180" cy="80" r="56" fill="url(#glow)"/>
+    <circle cx="180" cy="80" r="26" fill="url(#head)"/>
+  </g>
+</svg>

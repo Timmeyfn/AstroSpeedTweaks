@@ -1,0 +1,25 @@
+Putting this folder on GitHub (pick ONE way)
+============================================
+
+WAY 1 - website only (no installs)
+1. Go to github.com/new
+2. Repository name: astrospeed-tweaks   |  choose Public  |  leave every box unticked
+3. Click "Create repository"
+4. On the next page click the link "uploading an existing file"
+5. Open this folder, select EVERYTHING inside it (Ctrl+A) and drag it onto the page
+   (drag the files, not the folder itself, so astrospeed.json lands at the top level)
+6. Click "Commit changes"
+
+WAY 2 - GitHub Desktop (desktop.github.com)
+1. File > Add local repository > choose this folder
+   (it's already a git repository with everything committed)
+2. Click "Publish repository", untick "Keep this code private", Publish
+
+THEN (both ways)
+1. Open update-repo.txt and put your repo on the last line, e.g.   yourname/astrospeed-tweaks
+2. Run build.bat - your new exe is in the dist folder
+3. Commit/upload the changed update-repo.txt too
+4. Open the exe > Settings > Online pack > Check now. You should see 3 tweaks and 1 game.
+
+From then on: add .bat files to the "tweaks" folder or edit astrospeed.json on github.com.
+See HOW TO ADD ONLINE TWEAKS.txt.

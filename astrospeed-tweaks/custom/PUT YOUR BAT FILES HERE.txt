@@ -1,0 +1,16 @@
+Put your .bat files in this folder, then double-click build.bat.
+
+Each .bat file becomes its own switch in the app, under "Your tweaks".
+The file name becomes the switch's name, e.g. "fps boost.bat" -> "Fps boost".
+A "::" or "rem" comment near the top becomes its description.
+
+What happens to each line:
+- reg add, reg delete, sc config, schtasks /disable, bcdedit:
+  added with an automatic backup and undo.
+- Other commands (netsh, powercfg, del, ...): run as they are, but the app
+  can't undo them automatically.
+- Lines inside if/for blocks, goto menus, variables, pause, timeout, shutdown:
+  skipped. build.bat lists every skipped line so you can see what happened.
+
+The switches are part of the Competitive profile, so Optimize runs them when
+Competitive is selected.

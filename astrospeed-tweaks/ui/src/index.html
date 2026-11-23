@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AstroSpeed Tweaks</title>
+<style>
+@font-face{font-family:"Manrope";src:url(data:font/woff;base64,{{FONT_MANROPE}}) format("woff");font-weight:200 800;font-display:block}
+{{CSS}}
+</style>
+</head>
+<body>
+<div id="splash" aria-hidden="true">
+  <div class="splash-core">
+    <img class="splash-mark" alt="" src="data:image/svg+xml;base64,{{LOGO}}">
+    <div class="splash-word"><span class="kw" style="--k:0"><span>Astro</span></span><span class="kw" style="--k:1"><span>Speed</span></span></div>
+    <div class="splash-line"><i></i></div>
+  </div>
+</div>
+
+<div id="app">
+  <aside class="rail">
+    <div class="brand">
+      <img class="brand-mark" alt="" src="data:image/svg+xml;base64,{{LOGO}}">
+      <div class="brand-text">
+        <div class="wordmark">AstroSpeed</div>
+        <div class="brand-sub">Game tweaks</div>
+      </div>
+    </div>
+    <nav id="navWrap" aria-label="Sections"><div id="navInd" aria-hidden="true"></div><div id="nav"></div></nav>
+    <div class="rail-foot" id="railFoot"></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="title-block" id="titleBlock">
+        <h1 id="pageTitle">Dashboard</h1>
+        <p id="pageSub"></p>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="themeBtn" type="button" aria-label="Use dark appearance"></button>
+        <button class="icon-btn" id="motionBtn" type="button" aria-label="Pause animations" aria-pressed="false"></button>
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+          <input id="search" type="search" placeholder="Search 150+ tweaks" autocomplete="off" spellcheck="false">
+          <kbd>Ctrl K</kbd>
+        </label>
+        <button class="btn secondary" id="undoAllBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+          Undo all
+        </button>
+        <button class="btn primary" id="optimizeBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 3 10.5l7.5 2.5L13 21z"/><path d="m10.5 13 4-4"/></svg>
+          <span>Optimize</span>
+          <svg class="arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+      <div class="scroll-bar" id="scrollBar" aria-hidden="true"></div>
+    </header>
+    <div id="banners"></div>
+    <section id="view" class="view" tabindex="-1"></section>
+  </main>
+</div>
+
+<div id="modal" class="modal" hidden></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script>
+window.__HILLS_DAY = "data:image/webp;base64,{{HILLS_DAY}}";
+window.__HILLS_NIGHT = "data:image/webp;base64,{{HILLS_NIGHT}}";
+window.__ART = {{GAME_ART}};
+try { var t = localStorage.getItem('sg-theme'); if (t) document.documentElement.dataset.theme = t; if (localStorage.getItem('sg-motion') === 'off') document.documentElement.classList.add('motion-off'); } catch (e) {}
+{{PRELUDE}}
+</script>
+<script>
+{{JS}}
+</script>
+</body>
+</html>
