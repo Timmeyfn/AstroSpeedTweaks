@@ -1,4 +1,2 @@
-# Paste your Cloudflare key-server address here, for example:
-#   https://astrospeed-keys.yourname.workers.dev
-# Leave it blank to keep the whole app free with everything unlocked.
-
+# Your Cloudflare key server:
+https://rapid-forest-bfb5.dupelication.workers.dev
