@@ -53,14 +53,15 @@ func checkUpdate() (updateInfo, error) {
 	client := &http.Client{Timeout: 8 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return info, errors.New("couldn't reach GitHub. Check your internet connection")
+		return info, errors.New("couldn't check for updates. Check your internet connection")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 404 {
-		return info, errors.New("no releases published yet")
+		info.Latest = AppVersion // nothing published yet: this is the latest
+		return info, nil
 	}
 	if resp.StatusCode != 200 {
-		return info, fmt.Errorf("GitHub answered %s", resp.Status)
+		return info, fmt.Errorf("update server answered %s", resp.Status)
 	}
 	var rel struct {
 		Tag       string `json:"tag_name"`

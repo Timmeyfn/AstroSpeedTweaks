@@ -2,7 +2,7 @@
 (() => {
   const C = window.__CATALOG;
 const PACK_GAMES = [{ id: 'halo', name: 'Halo Infinite', studio: '343 Industries', exes: ['HaloInfinite.exe'], color: '#3A7D44', online: true }];
-const PACK = () => ({ configured: true, repo: 'your-name/astrospeed-tweaks', found: true, tweaks: 3, games: 1, sections: 1, message: 'New in the online pack: Halo Infinite support and two network tweaks.', problems: ['my_tweaks.bat: line 14 skipped (inside an if/for block)'], images: {}, checked: new Date().toISOString(), error: '' });
+const PACK = () => ({ configured: true, repo: 'your-name/astrospeed-tweaks', found: true, tweaks: 3, games: 1, sections: 1, message: 'New: Halo Infinite support and two network tweaks.', problems: ['my_tweaks.bat: line 14 skipped (inside an if/for block)'], images: {}, checked: new Date().toISOString(), error: '' });
 if (C && !C.__packed) {
   C.__packed = true;
   C.categories.push({ id: 'online', title: 'Online tweaks', nav: 'Online', subtitle: 'Tweaks added from your GitHub repository. They update by themselves when you change the repository.', icon: 'spark' });
@@ -36,11 +36,13 @@ if (C && !C.__packed) {
     live: () => ({ cpu: 18 + Math.random() * 22, ramPct: 41 + Math.random() * 4, ramUsedGB: 13.2, ramGB: 31.2, timer: 0.5, procs: 214, uptimeH: 5.2, game: 'Fortnite' }),
     setAutoBoost: a => a.on,
     drives: () => [{ letter: 'C:', label: 'Windows', freeGB: 212.4, sizeGB: 931 }, { letter: 'D:', label: 'Games', freeGB: 71.2, sizeGB: 1863 }],
+    checkup: () => ({ displays: [{ name: 'Display 1', gpu: 'NVIDIA GeForce RTX 4070', width: 2560, height: 1440, hz: 60, maxHz: 165, primary: true }, { name: 'Display 2', gpu: 'NVIDIA GeForce RTX 4070', width: 1920, height: 1080, hz: 60, maxHz: 60, primary: false }], powerPlan: 'Balanced', uptimeHours: 131, memLoad: 64 }),
+    pingOnce: () => (Math.random() < 0.04 ? { error: 'No reply', loss: 100 } : { avg: 28 + Math.random() * 9 + (Math.random() < 0.08 ? 40 : 0), loss: 0 }),
     packStatus: () => PACK(),
     refreshPack: () => PACK(),
     checkUpdate: () => ({ configured: true, available: true, current: '1.4.0', latest: '1.5.0', title: 'v1.5.0', notes: '## What\'s new\n- Faster game detection\n- New **Settings** page\n- Fixes for Roblox updates', download: 'https://example.com/AstroSpeed.zip', page: 'https://example.com' }),
     startupGet: () => false, setSetting: a => a.on,
-    init: () => ({ version: '1.5.0', pack: PACK(), games: C.games.concat(PACK_GAMES), autoBoost: false, hotkey: false, autoUpdate: true, updateRepo: 'your-name/astrospeed-tweaks', categories: C.categories, catalog: C.catalog, tweakCount: C.tweakCount, actionCount: C.actionCount, env, admin: true, profile: 2, totalChanges: 214, lastOptimize: '2026-10-16T19:42:00+08:00', restorePoints: [], cleanTargets, dataDir: 'C:\\ProgramData\\AstroSpeed' }),
+    init: () => ({ version: '1.6.0', pack: PACK(), games: C.games.concat(PACK_GAMES), autoBoost: false, hotkey: false, autoUpdate: true, updateRepo: 'your-name/astrospeed-tweaks', categories: C.categories, catalog: C.catalog, tweakCount: C.tweakCount, actionCount: C.actionCount, env, admin: true, profile: 2, totalChanges: 214, lastOptimize: '2026-10-16T19:42:00+08:00', restorePoints: [], cleanTargets, dataDir: 'C:\\ProgramData\\AstroSpeed' }),
     states: () => ({ states, reboot: false }),
     probe: () => env, env: () => env,
     boostStatus: () => ({ timerHeld: false, timerCur: 15.625, timerMin: 15.625, timerMax: 0.5, standbyMB: 6120, freeMB: 18540, totalMB: 31950, memLoad: 42, fortnite: true, game: 'Fortnite' }),

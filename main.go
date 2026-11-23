@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "1.5.0"
+const AppVersion = "1.6.0"
 
 //go:embed ui/dist/index.html
 var indexHTML string
@@ -457,6 +457,14 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		return drives(), nil
 	case "checkUpdate":
 		return checkUpdate()
+	case "checkup":
+		return checkup(), nil
+	case "pingOnce":
+		var a struct {
+			ID string `json:"id"`
+		}
+		_ = parseArgs(args, &a)
+		return pingOnce(a.ID), nil
 	case "packStatus":
 		return packStatus(), nil
 	case "refreshPack":
@@ -528,6 +536,10 @@ func openTarget(t string) error {
 	switch t {
 	case "logs":
 		return shellOpen(filepath.Join(dataDir, "logs"))
+	case "display":
+		return shellOpen("ms-settings:display-advanced")
+	case "graphics":
+		return shellOpen("ms-settings:display-advancedgraphics")
 	case "restore":
 		return shellOpen(filepath.Join(os.Getenv("SystemRoot"), `System32\rstrui.exe`))
 	case "nvcp":

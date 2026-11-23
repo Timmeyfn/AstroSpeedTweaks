@@ -195,13 +195,13 @@ func CheckPack(p RemotePack, bats map[string]string, baseCats []Category, baseTw
 			t.Cat = "online"
 		}
 		if t.Desc == "" {
-			t.Desc = "Added from your GitHub pack."
+			t.Desc = "A live tweak, delivered without an app update."
 		}
 		if t.Benefit == "" {
-			t.Benefit = "Your own tweak, applied with the rest of Optimize."
+			t.Benefit = "Applied with the rest of Optimize, and undone like every other tweak."
 		}
 		if t.Group == "" {
-			t.Group = "From your GitHub pack"
+			t.Group = "Latest"
 		}
 		if t.Impact < 1 || t.Impact > 3 {
 			t.Impact = 2
@@ -263,7 +263,7 @@ func CheckPack(p RemotePack, bats map[string]string, baseCats []Category, baseTw
 		}
 	}
 	if needOnline && !catOK["online"] {
-		res.Categories = append(res.Categories, Category{ID: "online", Title: "Online tweaks", Nav: "Online", Subtitle: "Tweaks added from your GitHub repository. They update by themselves when you change the repository.", Icon: "spark"})
+		res.Categories = append(res.Categories, Category{ID: "online", Title: "Live tweaks", Nav: "Live", Subtitle: "Fresh tweaks delivered straight to the app. New ones appear here by themselves, no update needed.", Icon: "spark"})
 	}
 
 	for _, rg := range p.Games {
@@ -480,8 +480,8 @@ func BatToTweak(fileName, text string) (Tweak, []string) {
 		title = "Custom tweaks"
 	}
 	title = strings.ToUpper(title[:1]) + title[1:]
-	t := Tweak{ID: "bat-" + cleanID(stem), Cat: "online", Group: "From " + fileName, Title: title,
-		Benefit: "Your own tweaks, applied with the rest of Optimize.", Impact: 2, Risk: "moderate", Profile: 2}
+	t := Tweak{ID: "bat-" + cleanID(stem), Cat: "online", Group: "Latest", Title: title,
+		Benefit: "Applied with the rest of Optimize, and undone like every other tweak.", Impact: 2, Risk: "moderate", Profile: 2}
 	var skipped []string
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	raw := strings.Split(text, "\n")
@@ -544,11 +544,10 @@ func BatToTweak(fileName, text string) (Tweak, []string) {
 		}
 	}
 	if t.Desc == "" {
-		t.Desc = "Runs the commands from " + fileName + "."
+		t.Desc = "A live tweak, delivered without an app update."
 	}
-	t.Note = "From " + fileName + " in your GitHub pack."
 	if nCmd > 0 {
-		t.Note += fmt.Sprintf(" %d of its %d commands can't be undone automatically.", nCmd, nCmd+nUndo)
+		t.Note = fmt.Sprintf("%d of its %d changes can't be undone automatically.", nCmd, nCmd+nUndo)
 	}
 	return t, skipped
 }

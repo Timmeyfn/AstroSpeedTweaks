@@ -191,7 +191,7 @@ func ghGet(url string, limit int64) ([]byte, int, error) {
 	}
 	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
 	if err != nil {
-		return nil, 0, errors.New("couldn't reach GitHub")
+		return nil, 0, errors.New("couldn't connect. Check your internet connection")
 	}
 	defer resp.Body.Close()
 	b, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
@@ -214,7 +214,7 @@ func fetchPack(repo string) (packCache, error) {
 		c.JSON, c.Found = string(b), true
 	case code == 404:
 	default:
-		return c, fmt.Errorf("GitHub answered %d for astrospeed.json", code)
+		return c, fmt.Errorf("the tweak server answered %d", code)
 	}
 
 	b, code, err = ghGet("https://api.github.com/repos/"+repo+"/contents/tweaks", 512<<10)

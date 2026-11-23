@@ -71,6 +71,9 @@ const P = {
   moon: '<path d="M21 13A9 9 0 0 1 11 3a9 9 0 1 0 10 10Z"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
+  pulse: '<path d="M2.5 12h4l2.5-6 4.5 12 2.5-6h5.5"/>',
+  monitor: '<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8.5 21h7M12 17v4"/>',
+  clock: '<circle cx="12" cy="12" r="9.5"/><path d="M12 7v5l3.5 2"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>'
 };
 const ico = (n, cls) => `<svg viewBox="0 0 24 24" aria-hidden="true"${cls ? ` class="${cls}"` : ''}>${P[n] || ''}</svg>`;
@@ -80,7 +83,8 @@ const S = {
   data: null, states: {}, reboot: false, page: 'dashboard', filter: 'all', search: '',
   expanded: new Set(), busy: new Set(), heroAnimated: false,
   booster: null, bgApps: null, bgSel: null, clean: null, cleanSel: null, startup: null,
-  ping: null, pinging: false, dns: null, log: null
+  ping: null, pinging: false, dns: null, log: null,
+  checkup: null, scanning: false, scanStamp: 0, livePing: { region: 'oce', running: false, samples: [] }
 };
 const T = () => S.data.catalog;
 const byId = id => T().find(t => t.id === id);
@@ -93,6 +97,7 @@ const availCount = list => list.filter(t => avail(t.id)).length;
 const pendingFor = p => T().filter(t => t.profile > 0 && t.profile <= p && avail(t.id) && !isOn(t.id));
 
 const toolPages = [
+  { id: 'checkup', title: 'PC checkup', icon: 'pulse', sub: 'A full scan of what is holding your FPS back, with a score and one-click fixes.' },
   { id: 'booster', title: 'Game booster', icon: 'rocket', sub: 'One-tap actions to run right before you queue: clear memory, tighten the timer, close background apps.' },
   { id: 'cleaner', title: 'System cleaner', icon: 'broom', sub: 'Clears temp files, caches and leftovers. Your game settings, keybinds and replays are never touched.' },
   { id: 'startup', title: 'Startup apps', icon: 'power', sub: 'Choose what launches with Windows. Uses the same switch as Task Manager, so you can change it back there too.' },
@@ -168,7 +173,7 @@ function render() {
   else {
     const p = [...toolPages, ...safetyPages].find(x => x.id === S.page);
     title = p.title; sub = p.sub;
-    v.innerHTML = ({ booster: viewBooster, cleaner: viewCleaner, startup: viewStartup, network: viewNetwork, safety: viewSafety, about: viewAbout, settings: viewSettings })[S.page]();
+    v.innerHTML = ({ checkup: viewCheckup, booster: viewBooster, cleaner: viewCleaner, startup: viewStartup, network: viewNetwork, safety: viewSafety, about: viewAbout, settings: viewSettings })[S.page]();
     afterTool();
   }
   const tb = $('#titleBlock');
@@ -509,6 +514,173 @@ function healthChecks() {
   return list.map(c => `<div class="check">${ico(c.ok === 'ok' ? 'ok' : 'warn', 'ico-' + c.ok)}<div class="t">${esc(c.name)}<small>${esc(c.small)}</small></div><div>${c.btn || ''}</div></div>`).join('');
 }
 
+// ───────────────────────── PC checkup ─────────────────────────
+const WEIGHT_WORD = { 3: 'Big impact', 2: 'Medium impact', 1: 'Small impact' };
+async function runScan() {
+  S.scanning = true; S.checkup = null;
+  if (S.page === 'checkup') rerenderView();
+  const t0 = performance.now();
+  const [info, startup, bg, drives] = await Promise.all([
+    api('checkup').catch(() => ({})),
+    api('startupList').catch(() => null),
+    api('bgApps').catch(() => null),
+    api('drives').catch(() => null)
+  ]);
+  if (startup) S.startup = startup;
+  if (bg) S.bgApps = bg;
+  if (drives) S.drives = drives;
+  await refreshStates();
+  const wait = motionOK() ? Math.max(0, 1500 - (performance.now() - t0)) : 0;
+  await new Promise(r => setTimeout(r, wait));
+  S.checkup = info || {}; S.scanning = false; S.scanStamp = Date.now();
+  if (S.page === 'checkup') rerenderView();
+}
+function checkupItems() {
+  const c = S.checkup || {}, e = S.data.env || {};
+  const out = [];
+  const add = (o) => out.push(o);
+  const twCheck = (id, w, name, offText, onText) => {
+    if (!byId(id) || st(id) === 'na') return;
+    const ok = isOn(id);
+    add({ w, ok, name, small: ok ? onText : offText, fix: ok ? '' : `<button class="btn sm ghost" data-act="apply1" data-id="${id}" type="button">Fix</button>`, tweak: ok ? '' : id });
+  };
+  (c.displays || []).forEach(d => {
+    const low = d.maxHz > d.hz + 1;
+    add({ w: 3, ok: !low, name: `${d.primary ? 'Main screen' : d.name} refresh rate`, icon: 'monitor',
+      small: low ? `Running at ${d.hz} Hz, but it can do ${d.maxHz} Hz. You are seeing fewer frames than your PC draws.` : `${d.hz} Hz at ${d.width}×${d.height}, the most this screen offers`,
+      fix: low ? `<button class="btn sm ghost" data-open="display" type="button">${ico('ext')}Open display settings</button>` : '' });
+  });
+  const goodPlan = /high|ultimate|astro|bitsum|performance/i.test(c.powerPlan || '') || isOn('power-plan');
+  add({ w: 3, ok: goodPlan, name: 'Power plan', small: goodPlan ? (c.powerPlan || 'High performance') + ' is active' : `${c.powerPlan || 'Balanced'} lets Windows clock your CPU down mid-game`,
+    fix: goodPlan || !byId('power-plan') || st('power-plan') === 'na' ? '' : `<button class="btn sm ghost" data-act="apply1" data-id="power-plan" type="button">Fix</button>`, tweak: goodPlan ? '' : 'power-plan' });
+  if (e.probed && e.ramXmp && e.ramXmp !== 'unknown') add({ w: 3, ok: e.ramXmp === 'ok', name: 'Memory speed',
+    small: e.ramXmp === 'ok' ? `${e.ramConf} MT/s, its rated speed` : e.ramXmp === 'likely_off' ? `${e.ramConf} MT/s. XMP/EXPO looks switched off in the BIOS` : `${e.ramConf} of ${e.ramSpeed} MT/s rated`,
+    fix: e.ramXmp === 'ok' ? '' : `<button class="btn sm ghost" data-nav="cat:kernel" type="button">How to fix</button>` });
+  if (e.ramSticks > 0) add({ w: 2, ok: e.ramSticks !== 1, name: 'Dual-channel memory', small: e.ramSticks === 1 ? 'Only one memory stick. A second matching stick can add a lot of FPS in CPU-heavy games' : `${e.ramSticks} sticks installed` });
+  twCheck('gamemode', 2, 'Game Mode', 'Off. Windows won’t prioritise your game', 'On');
+  twCheck('hags', 2, 'Hardware-accelerated GPU scheduling', 'Off', 'On');
+  twCheck('gamedvr', 2, 'Background recording', 'Game DVR is recording in the background', 'Off');
+  twCheck('nic-power', 1, 'Network adapter power saving', 'Your network card can nap between packets', 'Off');
+  twCheck('fth', 1, 'Fault Tolerant Heap', 'Games that crashed before may run with extra checks', 'Off');
+  (e.gpus || []).filter(g => g.vendor && driverAgeDays(g) >= 0).slice(0, 1).forEach(g => {
+    const days = driverAgeDays(g), months = Math.round(days / 30.4);
+    add({ w: 2, ok: days <= 180, name: 'Graphics driver', small: days <= 180 ? (days < 45 ? 'Up to date' : `${months} months old`) : `${months} months old. Newer drivers fix stutter and add game optimisations`,
+      fix: days > 180 ? `<button class="btn sm ghost" data-open="${DRIVER_URL[g.vendor]}" type="button">${ico('ext')}Get latest</button>` : '' });
+  });
+  if (e.probed && e.vbs >= 0) add({ w: 1, ok: !e.hvci, name: 'Memory Integrity', small: e.hvci ? 'On. Good security, but it costs some FPS' : 'Off', fix: e.hvci ? `<button class="btn sm ghost" data-nav="cat:kernel" type="button">Options</button>` : '' });
+  const sys = (S.drives || []).find(d => /^c/i.test(d.letter)) || (S.drives || [])[0];
+  if (sys) { const pct = sys.freeGB / sys.sizeGB; add({ w: 2, ok: pct >= 0.12, name: `Free space on ${sys.letter}`, small: `${sys.freeGB.toFixed(0)} GB free of ${sys.sizeGB.toFixed(0)} GB` + (pct < 0.12 ? '. A nearly full drive causes stutter' : ''), fix: pct < 0.12 ? `<button class="btn sm ghost" data-nav="cleaner" type="button">Clean up</button>` : '' }); }
+  if (S.startup) { const n = S.startup.filter(x => x.enabled).length; add({ w: 1, ok: n <= 6, name: 'Startup apps', small: `${plural(n, 'app')} start with Windows` + (n > 6 ? ', slowing boot and running in the background' : ''), fix: n > 6 ? `<button class="btn sm ghost" data-nav="startup" type="button">Review</button>` : '' }); }
+  if (S.bgApps) { const mb = S.bgApps.reduce((a, b) => a + (b.memMB || 0), 0); add({ w: 1, ok: mb < 1500, name: 'Apps running in the background', small: mb ? `${fmtMB(mb)} used by ${plural(S.bgApps.length, 'app')} you could close before playing` : 'Nothing heavy running', fix: mb >= 1500 ? `<button class="btn sm ghost" data-nav="booster" type="button">Close them</button>` : '' }); }
+  if (c.memLoad) add({ w: 1, ok: c.memLoad < 80, name: 'Memory in use', small: `${c.memLoad}% of your RAM is in use right now`, fix: c.memLoad >= 80 ? `<button class="btn sm ghost" data-nav="booster" type="button">Free memory</button>` : '' });
+  if (c.uptimeHours) { const days = c.uptimeHours / 24; add({ w: 1, ok: days < 3, name: 'Time since restart', small: days >= 1 ? `${days.toFixed(days < 10 ? 1 : 0)} days. ` + (days >= 3 ? 'A restart clears leaked memory and stuck drivers' : 'Fine') : `${Math.max(1, Math.round(c.uptimeHours))} hours`, fix: days >= 3 ? `<button class="btn sm ghost" data-act="restart" type="button">Restart</button>` : '' }); }
+  const pend = pendingFor(2).length;
+  add({ w: 3, ok: pend === 0, name: 'AstroSpeed tweaks', small: pend ? `${plural(pend, 'tweak')} in the Competitive profile ${pend === 1 ? 'is' : 'are'} still off` : 'Everything in Competitive is on', fix: pend ? `<button class="btn sm ghost" data-act="optimize" type="button">Optimize</button>` : '' });
+  return out;
+}
+function scoreOf(items) {
+  const tot = items.reduce((a, b) => a + b.w, 0) || 1;
+  return Math.round(items.filter(i => i.ok).reduce((a, b) => a + b.w, 0) / tot * 100);
+}
+function gradeOf(n) { return n >= 90 ? 'Tournament ready' : n >= 75 ? 'In good shape' : n >= 55 ? 'Room to improve' : 'Holding you back'; }
+function viewCheckup() {
+  const R = 84, C = 2 * Math.PI * R;
+  if (!S.checkup) {
+    return `<div class="panel spot scan-panel"><div class="scan-ring"><svg viewBox="0 0 200 200"><circle class="trk" cx="100" cy="100" r="${R}"/><circle class="sweep" cx="100" cy="100" r="${R}" style="stroke-dasharray:${C * .22} ${C}"/></svg><div class="scan-mid">${ico('pulse')}</div></div>
+      <div class="scan-copy"><h2>Scanning your PC</h2><p class="muted">Screens, power, memory, drivers, storage, startup apps and what's running in the background.</p><div class="scan-steps">${['Displays', 'Power plan', 'Memory', 'Drivers', 'Storage', 'Startup', 'Background apps'].map((x, i) => `<span style="--i:${i}">${x}</span>`).join('')}</div></div></div>`;
+  }
+  const items = checkupItems();
+  const score = scoreOf(items);
+  const bad = items.filter(i => !i.ok), fixable = bad.filter(i => i.tweak);
+  items.sort((a, b) => (a.ok - b.ok) || (b.w - a.w));
+  const tone = score >= 90 ? 'ok' : score >= 55 ? 'mid' : 'low';
+  return `
+  <div class="panel spot score-panel tone-${tone}">
+    <div class="score-ring"><svg viewBox="0 0 200 200"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="#FFB37A"/></linearGradient></defs>
+      <circle class="trk" cx="100" cy="100" r="${R}"/><circle class="val" cx="100" cy="100" r="${R}" style="stroke-dasharray:${C};stroke-dashoffset:${C * (1 - score / 100)};--from:${C}"/></svg>
+      <div class="score-mid"><b data-score="${score}">${score}</b><span>out of 100</span></div></div>
+    <div class="score-copy">
+      <div class="eyebrow">Your score</div>
+      <h2>${esc(gradeOf(score))}</h2>
+      <p class="muted">${bad.length ? `${plural(bad.length, 'thing')} could be costing you frames.${fixable.length ? ` ${fixable.length} can be fixed in one click.` : ''}` : 'Nothing is holding this PC back. Run it again after big Windows or driver updates.'}</p>
+      <div class="actions">${fixable.length ? `<button class="btn primary" data-act="fixAll" type="button">${ico('check')}Fix ${plural(fixable.length, 'issue')}</button>` : ''}<button class="btn ghost" data-act="rescan" type="button">${ico('reboot')}Scan again</button></div>
+    </div>
+    <div class="score-legend">${[['ok', items.filter(i => i.ok).length, 'Passed'], ['warn', bad.length, 'To fix']].map(([k, n, l]) => `<div><b class="ico-${k}" data-count="${n}">${n}</b><span>${l}</span></div>`).join('')}</div>
+  </div>
+  <div class="cu-list">
+    ${items.map((c, i) => `<div class="cu-row ${c.ok ? 'ok' : 'warn'}" style="--i:${i}">
+      <span class="cu-ico">${ico(c.ok ? 'ok' : 'warn', c.ok ? 'ico-ok' : 'ico-warn')}</span>
+      <div class="t"><b>${esc(c.name)}</b><small>${esc(c.small)}</small></div>
+      <span class="cu-w w${c.w}">${c.ok ? '' : WEIGHT_WORD[c.w]}</span>
+      <div class="cu-fix">${c.fix || ''}</div>
+    </div>`).join('')}
+  </div>`;
+}
+function animateCheckup() {
+  const fresh = S.scanStamp; S.scanStamp = 0;
+  const v = $('#view');
+  if (!fresh || !motionOK()) return;
+  v.classList.add('cu-anim');
+  const b = $('[data-score]', v), ring = $('.score-ring .val', v);
+  if (b) { b.textContent = '0'; countUp(b, +b.dataset.score, 1700, 250); }
+  if (ring) { const to = ring.style.strokeDashoffset; ring.style.transition = 'none'; ring.style.strokeDashoffset = ring.style.getPropertyValue('--from'); void ring.getBoundingClientRect(); ring.style.transition = ''; requestAnimationFrame(() => { ring.style.strokeDashoffset = to; }); }
+  $$('.score-legend [data-count]', v).forEach((el, i) => countUp(el, +el.dataset.count, 1200, 600 + i * 150));
+  setTimeout(() => v.classList.remove('cu-anim'), 3000);
+}
+
+// ───────────────────────── live ping graph ─────────────────────────
+const PING_REGIONS = [['oce', 'Oceania'], ['asia', 'Asia'], ['me', 'Middle East'], ['eu', 'Europe'], ['nae', 'NA East'], ['nac', 'NA Central'], ['naw', 'NA West'], ['br', 'Brazil']];
+function livePingPanel() {
+  const L = S.livePing;
+  return `<div class="panel spot live-ping">
+    <div class="panel-h"><h2>Live ping</h2>
+      <div class="lp-ctl"><select id="lpRegion" aria-label="Region">${PING_REGIONS.map(([k, n]) => `<option value="${k}"${L.region === k ? ' selected' : ''}>${n}</option>`).join('')}</select>
+      <button class="btn sm ${L.running ? 'ghost' : 'primary'}" data-act="livePing" type="button">${L.running ? ico('pause') + 'Stop' : ico('play') + 'Start'}</button></div></div>
+    <div class="panel-b">
+      <div class="lp-stats" id="lpStats"></div>
+      <div class="lp-chart" id="lpChart"></div>
+      <p class="muted small" style="margin:10px 0 0">One ping every second to the Fortnite servers for the region you pick. Spikes and gaps show Wi-Fi drops, someone downloading at home, or a busy connection.</p>
+    </div></div>`;
+}
+function drawLivePing(full) {
+  const box = $('#lpChart'), stats = $('#lpStats');
+  if (!box) return;
+  const L = S.livePing, xs = L.samples, N = 60;
+  const good = xs.filter(x => x != null);
+  const avg = good.length ? good.reduce((a, b) => a + b, 0) / good.length : 0;
+  let jit = 0; for (let i = 1; i < good.length; i++) jit += Math.abs(good[i] - good[i - 1]); jit = good.length > 1 ? jit / (good.length - 1) : 0;
+  const loss = xs.length ? Math.round((xs.length - good.length) / xs.length * 100) : 0;
+  const last = xs.length ? xs[xs.length - 1] : null;
+  stats.innerHTML = [['Now', last == null ? '–' : Math.round(last) + ' ms', true], ['Average', good.length ? Math.round(avg) + ' ms' : '–'], ['Best', good.length ? Math.round(Math.min(...good)) + ' ms' : '–'], ['Jitter', good.length > 1 ? jit.toFixed(1) + ' ms' : '–'], ['Loss', xs.length ? loss + '%' : '–']]
+    .map(([l, v, big]) => `<div${big ? ' class="big"' : ''}><span>${l}</span><b>${v}</b></div>`).join('');
+  const W = 1000, H = 180, pad = 10;
+  const max = Math.max(40, ...good) * 1.25;
+  const X = i => (i + (N - xs.length)) / (N - 1) * W;
+  const Y = v => H - pad - v / max * (H - pad * 2);
+  let d = '', area = '', started = false, firstX = 0;
+  xs.forEach((v, i) => { if (v == null) { started = false; return; } const p = `${X(i).toFixed(1)},${Y(v).toFixed(1)}`; if (!started) { d += 'M' + p; if (!area) { firstX = X(i); area = 'M' + p; } else area += 'L' + p; started = true; } else { d += 'L' + p; area += 'L' + p; } });
+  if (area) area += `L${X(xs.length - 1).toFixed(1)},${H}L${firstX.toFixed(1)},${H}Z`;
+  const grid = [0.25, 0.5, 0.75].map(f => `<line x1="0" x2="${W}" y1="${(H * f).toFixed(0)}" y2="${(H * f).toFixed(0)}"/>`).join('');
+  const lost = xs.map((v, i) => v == null ? `<rect x="${(X(i) - 3).toFixed(1)}" y="0" width="6" height="${H}"/>` : '').join('');
+  const tip = last != null ? `<i class="lp-dot" style="left:${(X(xs.length - 1) / W * 100).toFixed(2)}%;top:${(Y(last) / H * 100).toFixed(2)}%"></i>` : '';
+  box.innerHTML = `<div class="lp-plot"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="lpg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    <g class="lp-grid">${grid}</g><g class="lp-lost">${lost}</g>${area ? `<path class="lp-area" d="${area}"/>` : ''}${d ? `<path class="lp-line" d="${d}" vector-effect="non-scaling-stroke"/>` : ''}</svg>${tip}</div>
+    <div class="lp-y"><span>${Math.round(max)} ms</span><span>${Math.round(max / 2)} ms</span><span>0</span></div>
+    ${xs.length ? '' : `<div class="lp-empty">Press Start to watch your ping live</div>`}`;
+}
+async function livePingLoop() {
+  const L = S.livePing;
+  while (L.running) {
+    const t0 = performance.now();
+    let v = null;
+    try { const r = await api('pingOnce', { id: L.region }); v = r && !r.error && r.loss < 100 ? r.avg : null; } catch (e) { v = null; }
+    if (!L.running) break;
+    L.samples.push(v); if (L.samples.length > 60) L.samples.shift();
+    if (S.page === 'network') drawLivePing(); else { L.running = false; break; }
+    await new Promise(r => setTimeout(r, Math.max(0, 1000 - (performance.now() - t0))));
+  }
+}
+
 // ───────────────────────── settings ─────────────────────────
 function setRow(key, title, desc, on, extra = '') {
   return `<div class="set-row"><div class="set-t"><b>${esc(title)}</b><span>${desc}</span>${extra}</div><button class="switch" role="switch" aria-checked="${!!on}" data-act="setting" data-key="${key}" type="button" aria-label="${esc(title)}"></button></div>`;
@@ -518,8 +690,8 @@ function viewSettings() {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
   const motion = !document.documentElement.classList.contains('motion-off');
   let upd;
-  if (!d.updateRepo) upd = `<p class="muted small" style="margin:0">Updates aren't set up in this copy. Put your GitHub repository in <b>update-repo.txt</b> and run build.bat. Copies built after that check for new versions by themselves.</p>`;
-  else if (S.checking) upd = `<p class="muted" style="margin:0;display:flex;gap:10px;align-items:center"><span class="spin"></span>Checking GitHub…</p>`;
+  if (!d.updateRepo) upd = `<p class="muted small" style="margin:0">Automatic updates aren't available in this copy.</p>`;
+  else if (S.checking) upd = `<p class="muted" style="margin:0;display:flex;gap:10px;align-items:center"><span class="spin"></span>Checking…</p>`;
   else if (u && u.error) upd = `<p class="muted" style="margin:0">${esc(u.error)}</p>`;
   else if (u && u.available) upd = `<p style="margin:0"><b>Version ${esc(u.latest)} is available.</b> <span class="muted">You have ${esc(u.current)}.</span></p><div class="actions"><button class="btn sm primary" data-act="showUpdate" type="button">${ico('arrow')}See what's new</button></div>`;
   else if (u) upd = `<p class="muted" style="margin:0">${ico('ok', 'ico-ok')} You're on the latest version (${esc(d.version)}).</p>`;
@@ -533,7 +705,7 @@ function viewSettings() {
     </div></div>
     <div class="panel spot"><div class="panel-h"><h2>Updates</h2>${d.updateRepo ? `<button class="btn sm quiet" data-act="checkUpdate" type="button"${S.checking ? ' disabled' : ''}>${ico('reboot')}Check now</button>` : ''}</div><div class="panel-b">
       ${upd}
-      ${d.updateRepo ? setRow('autoUpdate', 'Check when AstroSpeed opens', `Looks at <span class="mono">github.com/${esc(d.updateRepo)}</span> for a newer version.`, d.autoUpdate) : ''}
+      ${d.updateRepo ? setRow('autoUpdate', 'Check for updates automatically', 'Lets you know when a new version of AstroSpeed is ready.', d.autoUpdate) : ''}
     </div></div>
     ${packPanel(d)}
     <div class="panel spot"><div class="panel-h"><h2>Boosting</h2></div><div class="panel-b">
@@ -550,19 +722,19 @@ function viewSettings() {
 function packPanel(d) {
   const p = d.pack || {};
   let body;
-  if (!d.updateRepo) body = `<p class="muted small" style="margin:0">Put your GitHub repository in <b>update-repo.txt</b> and run build.bat. Then anything you add to that repository (an <b>astrospeed.json</b> file or <b>.bat</b> files in a <b>tweaks</b> folder) shows up in everyone's AstroSpeed by itself.</p>`;
+  if (!d.updateRepo) body = `<p class="muted small" style="margin:0">Live tweaks aren't available in this copy.</p>`;
   else {
     const when = p.checked ? new Date(p.checked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    const stat = S.packChecking ? `<span class="spin"></span>Checking GitHub…`
+    const stat = S.packChecking ? `<span class="spin"></span>Checking…`
       : p.error ? esc(p.error) + (p.found ? '. Using the last copy downloaded.' : '')
-      : !p.found ? (p.checked ? `Nothing in the repository yet. Add <b>astrospeed.json</b> or a <b>tweaks</b> folder.` : 'Not checked yet.')
+      : !p.found ? (p.checked ? 'No live tweaks right now. New ones show up here by themselves.' : 'Not checked yet.')
       : `${ico('ok', 'ico-ok')} Up to date${when ? ' · checked ' + esc(when) : ''}`;
     body = `<p class="muted" style="margin:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${stat}</p>
       ${p.found ? `<div class="pack-stats"><div><b>${p.tweaks || 0}</b><span>tweaks</span></div><div><b>${p.games || 0}</b><span>games</span></div><div><b>${p.sections || 0}</b><span>sections</span></div><div><b>${Object.keys(p.images || {}).length}</b><span>pictures</span></div></div>` : ''}
-      ${(p.problems || []).length ? `<details class="pack-probs"><summary>${plural(p.problems.length, 'line')} left out for safety or format</summary>${p.problems.slice(0, 40).map(x => `<div>${esc(x)}</div>`).join('')}</details>` : ''}
-      <p class="muted small" style="margin:0">Reads <span class="mono">github.com/${esc(d.updateRepo)}</span> when AstroSpeed opens and every 30 minutes. Nothing from it is applied until you switch it on or run Optimize.</p>`;
+      ${(p.problems || []).length ? `<details class="pack-probs"><summary>${plural(p.problems.length, 'line')} skipped</summary>${p.problems.slice(0, 40).map(x => `<div>${esc(x)}</div>`).join('')}</details>` : ''}
+      <p class="muted small" style="margin:0">New tweaks arrive by themselves, no app update needed. Nothing is applied until you switch it on or run Optimize.</p>`;
   }
-  return `<div class="panel spot"><div class="panel-h"><h2>Online pack</h2>${d.updateRepo ? `<button class="btn sm quiet" data-act="refreshPack" type="button"${S.packChecking ? ' disabled' : ''}>${ico('reboot')}Check now</button>` : ''}</div><div class="panel-b">${body}</div></div>`;
+  return `<div class="panel spot"><div class="panel-h"><h2>Live tweaks</h2>${d.updateRepo ? `<button class="btn sm quiet" data-act="refreshPack" type="button"${S.packChecking ? ' disabled' : ''}>${ico('reboot')}Check now</button>` : ''}</div><div class="panel-b">${body}</div></div>`;
 }
 async function reloadCatalog(info) {
   try {
@@ -804,7 +976,7 @@ function rowHTML(t) {
       <span><span class="impact l${t.impact}"><i></i><i></i><i></i></span> ${impactWord[t.impact]} impact</span>
       ${t.risk !== 'safe' ? `<span class="risk-${t.risk}">${t.risk === 'expert' ? 'Expert' : 'Moderate risk'}</span>` : '<span>Safe</span>'}
       <span>${profileWord(t.profile)}</span>
-      ${t.online ? `<span class="from-pack">${ico('spark')}From your GitHub pack</span>` : ''}
+      ${t.online ? `<span class="from-pack">${ico('spark')}Live tweak</span>` : ''}
       ${stateTag}
       <button data-act="changes" data-id="${t.id}" type="button">${S.expanded.has(t.id) ? 'Hide changes' : 'What it changes'}</button>
     </div>
@@ -1034,7 +1206,8 @@ function viewNetwork() {
         <div class="actions"><button class="btn sm quiet" data-act="flushdns" type="button">${ico('broom')}Flush DNS cache</button></div>
       </div>
     </div>
-  </div>`;
+  </div>
+  ${livePingPanel()}`;
 }
 
 function viewSafety() {
@@ -1081,6 +1254,11 @@ function viewAbout() {
 }
 
 async function afterTool() {
+  if (S.page === 'checkup') {
+    if (!S.checkup && !S.scanning) runScan();
+    else if (S.checkup && S.scanStamp) animateCheckup();
+  }
+  if (S.page === 'network') drawLivePing(true);
   if (S.page === 'booster') {
     if (!S.booster) api('boostStatus').then(b => { S.booster = b; if (S.page === 'booster') rerenderView(); }).catch(() => {});
     if (S.bgApps === null) api('bgApps').then(a => { S.bgApps = a || []; if (S.page === 'booster') rerenderView(); }).catch(() => { S.bgApps = []; });
@@ -1294,7 +1472,7 @@ document.addEventListener('click', async e => {
     case 'showUpdate': showUpdate(); break;
     case 'getUpdate': if (S.update) { api('open', { target: S.update.download || S.update.page }).catch(err => toast(err.message, 'err')); closeModal(); toast('The update is downloading in your browser. Close AstroSpeed, then replace the old version with the new one.', 'info', 9000); } break;
     case 'skipUpdate': try { localStorage.setItem('sg-skip-version', S.update.latest); } catch (err) { /* ignore */ } closeModal(); toast(`You won't be reminded about ${S.update.latest}. Settings › Updates still shows it.`, 'info'); break;
-    case 'refreshPack': S.packChecking = true; rerenderView(); try { const info = await api('refreshPack'); S.data.pack = info; } catch (err) { S.data.pack = Object.assign({}, S.data.pack, { error: err.message }); } S.packChecking = false; await reloadCatalog(S.data.pack); toast(S.data.pack.error ? S.data.pack.error : 'Online pack is up to date.', S.data.pack.error ? 'err' : 'ok'); break;
+    case 'refreshPack': S.packChecking = true; rerenderView(); try { const info = await api('refreshPack'); S.data.pack = info; } catch (err) { S.data.pack = Object.assign({}, S.data.pack, { error: err.message }); } S.packChecking = false; await reloadCatalog(S.data.pack); toast(S.data.pack.error ? S.data.pack.error : 'Live tweaks are up to date.', S.data.pack.error ? 'err' : 'ok'); break;
     case 'msgDismiss': prefSet('sg-msg-seen', (S.data.pack || {}).message || ''); renderBanners(); break;
     case 'checkUpdate': S.checking = true; rerenderView(); try { S.update = await api('checkUpdate'); } catch (err) { S.update = { error: err.message }; } S.checking = false; rerenderView(); if (S.update && S.update.available) showUpdate(); break;
     case 'theme': applyTheme(b.dataset.v); rerenderView(); break;
@@ -1381,6 +1559,9 @@ document.addEventListener('click', async e => {
       try { await api('startupSet', { id, enabled: !item.enabled }); item.enabled = !item.enabled; toast(`${item.name} will ${item.enabled ? '' : 'no longer '}start with Windows.`, 'ok'); } catch (err) { toast(err.message, 'err'); }
       rerenderView(); break;
     }
+    case 'rescan': runScan(); break;
+    case 'fixAll': { const ids = [...new Set(checkupItems().filter(i => !i.ok && i.tweak).map(i => i.tweak))].filter(id => byId(id) && st(id) !== 'na'); if (ids.length) { await runJob('apply', { ids }, 'Fixing checkup issues', 'Starting…'); try { S.checkup = await api('checkup'); } catch (err) { /* keep */ } if (S.page === 'checkup') rerenderView(); } break; }
+    case 'livePing': { const L = S.livePing; if (L.running) { L.running = false; rerenderView(); } else { L.running = true; L.samples = []; rerenderView(); livePingLoop(); } break; }
     case 'ping': S.pinging = true; rerenderView(); try { S.ping = await api('ping'); } catch (err) { toast(err.message, 'err'); } S.pinging = false; rerenderView(); break;
     case 'flushdns': try { await api('flushDNS'); toast('DNS cache flushed.', 'ok'); } catch (err) { toast(err.message, 'err'); } break;
     case 'logrefresh': S.log = null; rerenderView(); break;
@@ -1389,6 +1570,7 @@ document.addEventListener('click', async e => {
 
 document.addEventListener('change', e => {
   const c = e.target;
+  if (c.id === 'lpRegion') { S.livePing.region = c.value; S.livePing.samples = []; drawLivePing(); }
   if (c.dataset.bg) { c.checked ? S.bgSel.add(c.dataset.bg) : S.bgSel.delete(c.dataset.bg); }
   if (c.dataset.clean) { c.checked ? S.cleanSel.add(c.dataset.clean) : S.cleanSel.delete(c.dataset.clean); rerenderView(); }
 });
@@ -1418,7 +1600,7 @@ window.addEventListener('resize', () => {
 // ───────────────────────── boot ─────────────────────────
 $('#view').addEventListener('scroll', updateScrollBar, { passive: true });
 on('hotkeyboost', d => toast(`Boosted${d.game ? ' ' + d.game : ''}: ${Math.max(0, Math.round(d.freedMB))} MB memory freed, timer tightened.`, 'ok', 5000));
-on('packUpdated', info => { const had = (S.data && S.data.pack) || {}; reloadCatalog(info).then(() => { if (info.tweaks > (had.tweaks || 0) || info.games > (had.games || 0)) toast('New tweaks arrived from the online pack.', 'ok', 5000); }); });
+on('packUpdated', info => { const had = (S.data && S.data.pack) || {}; reloadCatalog(info).then(() => { if (info.tweaks > (had.tweaks || 0) || info.games > (had.games || 0)) toast('New live tweaks just arrived.', 'ok', 5000); }); });
 on('autoboost', d => toast(`${d.game} started. Boosted: memory cleared, timer tightened, high priority.`, 'ok', 6000));
 $('#themeBtn').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
 $('#motionBtn').addEventListener('click', () => { applyMotion(document.documentElement.classList.contains('motion-off'), true); if (S.data) rerenderView(); });
