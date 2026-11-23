@@ -1,7 +1,16 @@
 // AstroSpeed sales website — Cloudflare Worker.
 // Paste this whole file into the Worker you use for the website (astrospeed...workers.dev).
-// To update the site later, edit the HTML inside the backticks below and Deploy.
-// (The HTML has no backticks of its own, so it's safe to keep it in one template string.)
+//
+// THE DOWNLOAD BUTTON:
+//   The "Download for Windows" button points at /download on this same site.
+//   That is served from a Cloudflare R2 bucket you bind to this Worker as  FILES,
+//   holding a file named exactly  AstroSpeed Tweaks.exe
+//   (setup steps are in "HOST THE DOWNLOAD.txt"). Until that's set up, /download
+//   shows a short "not ready yet" message instead of 404-ing.
+//
+// To change the site, edit the HTML in the backticks below and Deploy.
+
+const DL_NAME = "AstroSpeed Tweaks.exe";
 
 const HTML = `<!doctype html>
 <html lang="en">
@@ -284,9 +293,9 @@ const HTML = `<!doctype html>
 <script>
   // ─── EDIT THESE TWO LINES ───
   var BUY_LINK = "";   // paste your payment link (Gumroad / Ko-fi / Lemon Squeezy / PayPal). Blank = buttons show "Coming soon".
-  var DOWNLOAD_LINK = "https://github.com/Timmeyfn/AstroSpeedTweaks/releases/latest";
+  var DOWNLOAD_LINK = "/download";   // served from your Cloudflare R2 storage (see setup notes)
   // ────────────────────────────
-  document.querySelectorAll('#dlBtn,#dlTop').forEach(a => a.href = DOWNLOAD_LINK);
+  document.querySelectorAll('#dlBtn,#dlTop').forEach(function(a){ a.href = DOWNLOAD_LINK; a.setAttribute('download',''); });
   var buy = document.getElementById('buyBtn');
   if (BUY_LINK) { buy.href = BUY_LINK; } else { buy.textContent = "Coming soon"; buy.style.opacity = ".6"; buy.style.pointerEvents = "none"; }
 
@@ -348,7 +357,26 @@ const HTML = `<!doctype html>
 `;
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/download") {
+      if (!env.FILES) {
+        return new Response("Download isn't set up yet. Add an R2 bucket bound as FILES with " + DL_NAME + " in it.", { status: 503 });
+      }
+      const obj = await env.FILES.get(DL_NAME);
+      if (!obj) {
+        return new Response("The download file isn't uploaded yet.", { status: 404 });
+      }
+      return new Response(obj.body, {
+        headers: {
+          "content-type": "application/octet-stream",
+          "content-disposition": 'attachment; filename="' + DL_NAME + '"',
+          "cache-control": "public, max-age=3600",
+        },
+      });
+    }
+
     return new Response(HTML, {
       headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" },
     });
