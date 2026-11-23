@@ -1,7 +1,19 @@
 // AstroSpeed sales website — Cloudflare Worker.
 // Paste this whole file into your WEBSITE worker (astrospeed.dupelication.workers.dev).
-// The download button is already wired to your uploaded exe. To change the site,
-// edit the HTML in the backticks below and Deploy.
+//
+// It does two things:
+//   1. Serves the sales website.
+//   2. Serves /version.json, which the app checks to know if a new version is out.
+//      Nothing here touches GitHub.
+//
+// TO RELEASE A NEW APP VERSION:
+//   - Upload the new .exe to your download worker (same name), then
+//   - bump APP_VERSION below and update NOTES, and Deploy.
+//   Everyone on an older version then gets the in-app update prompt.
+
+const APP_VERSION = "1.8.0";
+const DOWNLOAD = "https://astrospeedtweaks.dupelication.workers.dev/AstroSpeed%20Tweaks.exe";
+const NOTES = "- Updates now install right inside the app\n- Free version + full version with a key\n- PC Checkup and live ping graph";
 
 const HTML = `<!doctype html>
 <html lang="en">
@@ -351,6 +363,12 @@ const HTML = `<!doctype html>
 
 export default {
   async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname === "/version.json") {
+      return new Response(JSON.stringify({ version: APP_VERSION, download: DOWNLOAD, notes: NOTES }), {
+        headers: { "content-type": "application/json", "cache-control": "no-cache", "access-control-allow-origin": "*" },
+      });
+    }
     return new Response(HTML, {
       headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" },
     });

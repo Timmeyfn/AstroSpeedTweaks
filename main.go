@@ -20,10 +20,13 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "1.7.0"
+const AppVersion = "1.8.0"
 
 //go:embed ui/dist/index.html
 var indexHTML string
+
+// instanceMutex keeps other copies out; the updater releases it just before relaunching.
+var instanceMutex windows.Handle
 
 var (
 	wv       webview2.WebView
@@ -61,8 +64,26 @@ func main() {
 
 	// one window at a time
 	name, _ := windows.UTF16PtrFromString("Global\\AstroSpeedTweaksSingleInstance")
-	if h, err := windows.CreateMutex(nil, false, name); err == windows.ERROR_ALREADY_EXISTS {
-		_ = h
+	afterUpdate := false
+	for _, a := range os.Args[1:] {
+		if a == "--after-update" {
+			afterUpdate = true
+		}
+	}
+	for tries := 0; ; tries++ {
+		h, err := windows.CreateMutex(nil, false, name)
+		if err != windows.ERROR_ALREADY_EXISTS {
+			instanceMutex = h
+			break
+		}
+		if h != 0 {
+			windows.CloseHandle(h)
+		}
+		// Just updated: the old copy is still closing, so wait for it instead of bowing out.
+		if afterUpdate && tries < 50 {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
 		title, _ := windows.UTF16PtrFromString("AstroSpeed Tweaks")
 		if w, _, _ := procFindWindow.Call(0, uintptr(unsafe.Pointer(title))); w != 0 {
 			procShowWindow.Call(w, 9) // SW_RESTORE
@@ -75,6 +96,7 @@ func main() {
 	procSetAppID.Call(uintptr(unsafe.Pointer(appID)))
 
 	initDataDir()
+	cleanupOldUpdate()
 	setupCrashLog()
 	defer markCleanExit()
 	loadState()
@@ -308,7 +330,7 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		autoBoost, hotkey, autoUpdate := appState.AutoBoost, appState.Hotkey, !appState.NoAutoUpdate
 		stateMu.Unlock()
 		return map[string]interface{}{
-			"version": AppVersion, "license": refreshLicense(), "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "updateRepo": updateRepo(), "pack": packStatus(),
+			"version": AppVersion, "license": refreshLicense(), "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "updateRepo": updateRepo(), "updateConfigured": updateCheckURL() != "", "pack": packStatus(),
 			"tweakCount": n, "actionCount": acts, "env": getEnv(), "admin": isElevated(),
 			"profile": profile, "totalChanges": total, "lastOptimize": last, "restorePoints": rps,
 			"cleanTargets": cleanTargets, "dataDir": dataDir, "lastCrash": lastCrash,
@@ -468,6 +490,10 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		return activateKey(a.Key)
 	case "checkUpdate":
 		return checkUpdate()
+	case "downloadUpdate":
+		return downloadUpdate()
+	case "applyUpdate":
+		return applyUpdate()
 	case "checkup":
 		return checkup(), nil
 	case "pingOnce":

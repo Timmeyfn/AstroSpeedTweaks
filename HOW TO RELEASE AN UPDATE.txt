@@ -1,33 +1,23 @@
-AstroSpeed - how updates work
-=============================
+AstroSpeed - releasing an update (all on Cloudflare, no GitHub)
+===============================================================
 
-Your repo:  https://github.com/Timmeyfn/AstroSpeedTweaks
-update-repo.txt is ALREADY set to  Timmeyfn/AstroSpeedTweaks  -  don't change it.
+How it works:
+  The app checks  https://astrospeed.dupelication.workers.dev/version.json
+  If the version there is higher than the one installed, it shows
+  "AstroSpeed X is ready" -> Update now -> it downloads inside the app with a
+  progress bar, installs itself and restarts. People never leave the app.
 
+To release a new version (Claude normally builds the exe for you):
 
-1) ADDING TWEAKS (most of the time - nothing to build)
-------------------------------------------------------
-- Go to the repo > open the "tweaks" folder > Add file > Upload files
-- Drop your .bat in > Commit changes
-Done. Everyone's AstroSpeed gets it by itself within ~30 minutes
-(or straight away: Settings > Online pack > Check now).
-No release, no new exe, no version number.
+  1. Upload the new exe to your download worker (astrospeedtweaks) with the
+     SAME name:  AstroSpeed Tweaks.exe   (replace the old one).
 
+  2. Open your website worker (astrospeed) > Edit code. At the top, change:
+        const APP_VERSION = "1.8.0";      <- make this the new number, e.g. "1.8.1"
+        const NOTES = "...";              <- what's new (each line starts with "- ",
+                                             separate lines with \n)
+     Deploy.
 
-2) RELEASING A NEW VERSION OF THE APP (only when the app itself changes)
------------------------------------------------------------------------
-Usually Claude does steps 1-2 for you and gives you the zip.
-
-1. Open main.go and raise the version number, e.g.
-       const AppVersion = "1.5.0"   ->   const AppVersion = "1.5.1"
-2. Run build.bat, then zip "AstroSpeed Tweaks.exe"
-   (right-click > Send to > Compressed (zipped) folder).
-3. Go to https://github.com/Timmeyfn/AstroSpeedTweaks/releases/new
-   - Choose a tag: type  v1.5.1  (same number, with a v) > "Create new tag"
-   - Release title: AstroSpeed 1.5.1
-   - Description: what changed. Lines starting with "- " show as a list.
-   - Drag the zip into the box at the bottom
-   - Click "Publish release"
-
-Next time anyone opens an older AstroSpeed, it says a new version is ready,
-shows your notes and has a Download button.
+That's it. Everyone on an older version gets the in-app update next time they
+open AstroSpeed. The version number in step 2 must match the new exe's version
+and be HIGHER than the last one.

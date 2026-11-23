@@ -1,0 +1,2 @@
+# Where the app checks for new versions (your own server, not GitHub):
+https://astrospeed.dupelication.workers.dev/version.json

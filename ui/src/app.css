@@ -680,3 +680,9 @@ table.ping{width:100%;border-collapse:collapse;font-size:14px}
 .prof-locked{opacity:.75}
 .prof-lock{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--accent);margin-left:8px}
 .prof-lock svg{width:12px;height:12px}
+
+/* ───────────── in-app updater ───────────── */
+.upd-prog{margin-top:20px}
+.upd-bar{height:10px;border-radius:999px;background:var(--bg-2);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
+.upd-bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent) 70%,#FFB37A);transition:width .25s var(--out)}
+.upd-prog-txt{margin-top:10px;font-size:13px;color:var(--ink-2);font-weight:600;font-variant-numeric:tabular-nums}

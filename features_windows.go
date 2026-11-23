@@ -19,9 +19,32 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// ───────────────────────── update checks (GitHub Releases) ─────────────────────────
+// ───────────────────────── update checks (self-hosted) ─────────────────────────
 
-// update-repo.txt holds "your-github-name/your-repo". Edit it, then run build.bat.
+// update-url.txt holds the address of a small JSON file on your own server that says
+// what the latest version is, for example:
+//
+//	https://astrospeed.dupelication.workers.dev/version.json
+//
+// Nothing here touches GitHub. Leave it blank to switch update checks off.
+//
+//go:embed update-url.txt
+var updateURLFile string
+
+func updateCheckURL() string {
+	for _, ln := range strings.Split(updateURLFile, "\n") {
+		ln = strings.TrimSpace(ln)
+		if ln == "" || strings.HasPrefix(ln, "#") {
+			continue
+		}
+		if strings.HasPrefix(ln, "https://") {
+			return ln
+		}
+	}
+	return ""
+}
+
+// updateRepo is still used by the online tweak pack.
 //
 //go:embed update-repo.txt
 var updateRepoFile string
@@ -42,58 +65,42 @@ type updateInfo struct {
 
 func checkUpdate() (updateInfo, error) {
 	info := updateInfo{Current: AppVersion}
-	repo := updateRepo()
-	if repo == "" {
+	u := updateCheckURL()
+	if u == "" {
 		return info, nil
 	}
 	info.Configured = true
-	req, _ := http.NewRequest("GET", "https://api.github.com/repos/"+repo+"/releases/latest", nil)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "AstroSpeed-Tweaks/"+AppVersion)
-	client := &http.Client{Timeout: 8 * time.Second}
-	resp, err := client.Do(req)
+	req, _ := http.NewRequest("GET", u, nil)
+	req.Header.Set("User-Agent", "AstroSpeed/"+AppVersion)
+	req.Header.Set("Cache-Control", "no-cache")
+	resp, err := (&http.Client{Timeout: 8 * time.Second}).Do(req)
 	if err != nil {
 		return info, errors.New("couldn't check for updates. Check your internet connection")
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == 404 {
-		info.Latest = AppVersion // nothing published yet: this is the latest
+	if resp.StatusCode != 200 {
+		info.Latest = AppVersion
 		return info, nil
 	}
-	if resp.StatusCode != 200 {
-		return info, fmt.Errorf("update server answered %s", resp.Status)
+	var m struct {
+		Version   string `json:"version"`
+		Notes     string `json:"notes"`
+		Title     string `json:"title"`
+		Download  string `json:"download"`
+		Published string `json:"published"`
 	}
-	var rel struct {
-		Tag       string `json:"tag_name"`
-		Name      string `json:"name"`
-		Body      string `json:"body"`
-		HTMLURL   string `json:"html_url"`
-		Published string `json:"published_at"`
-		Draft     bool   `json:"draft"`
-		Assets    []struct {
-			Name string `json:"name"`
-			URL  string `json:"browser_download_url"`
-		} `json:"assets"`
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&m); err != nil {
+		return info, errors.New("couldn't read the update information")
 	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&rel); err != nil {
-		return info, errors.New("couldn't read the release information")
+	info.Latest = strings.TrimPrefix(strings.TrimSpace(m.Version), "v")
+	info.Notes, info.Published = m.Notes, m.Published
+	info.Title = m.Title
+	if info.Title == "" && info.Latest != "" {
+		info.Title = "Version " + info.Latest
 	}
-	info.Latest = strings.TrimPrefix(rel.Tag, "v")
-	info.Title, info.Notes, info.Page, info.Published = rel.Name, rel.Body, rel.HTMLURL, rel.Published
-	for _, a := range rel.Assets {
-		low := strings.ToLower(a.Name)
-		if strings.HasSuffix(low, ".zip") || strings.HasSuffix(low, ".exe") {
-			info.Download = a.URL
-			if strings.HasSuffix(low, ".zip") {
-				break
-			}
-		}
-	}
-	if info.Download == "" {
-		info.Download = info.Page
-	}
-	info.Available = !rel.Draft && newerVersion(rel.Tag, AppVersion)
-	logf("Update check: running %s, latest %s, update available: %v", AppVersion, info.Latest, info.Available)
+	info.Download, info.Page = m.Download, m.Download
+	info.Available = info.Latest != "" && newerVersion(info.Latest, AppVersion)
+	logf("Update check: running %s, latest %s, available: %v", AppVersion, info.Latest, info.Available)
 	return info, nil
 }
 

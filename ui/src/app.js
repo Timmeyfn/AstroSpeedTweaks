@@ -695,7 +695,7 @@ function viewSettings() {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
   const motion = !document.documentElement.classList.contains('motion-off');
   let upd;
-  if (!d.updateRepo) upd = `<p class="muted small" style="margin:0">Automatic updates aren't available in this copy.</p>`;
+  if (!d.updateConfigured) upd = `<p class="muted small" style="margin:0">Automatic updates aren't available in this copy.</p>`;
   else if (S.checking) upd = `<p class="muted" style="margin:0;display:flex;gap:10px;align-items:center"><span class="spin"></span>Checking…</p>`;
   else if (u && u.error) upd = `<p class="muted" style="margin:0">${esc(u.error)}</p>`;
   else if (u && u.available) upd = `<p style="margin:0"><b>Version ${esc(u.latest)} is available.</b> <span class="muted">You have ${esc(u.current)}.</span></p><div class="actions"><button class="btn sm primary" data-act="showUpdate" type="button">${ico('arrow')}See what's new</button></div>`;
@@ -709,9 +709,9 @@ function viewSettings() {
         <div class="seg"><button class="${theme === 'light' ? 'on' : ''}" data-act="theme" data-v="light" type="button">Paper</button><button class="${theme === 'dark' ? 'on' : ''}" data-act="theme" data-v="dark" type="button">Charcoal</button></div></div>
       ${setRow('motion', 'Animations', 'Page transitions, the dashboard flight and floating cards.', motion)}
     </div></div>
-    <div class="panel spot"><div class="panel-h"><h2>Updates</h2>${d.updateRepo ? `<button class="btn sm quiet" data-act="checkUpdate" type="button"${S.checking ? ' disabled' : ''}>${ico('reboot')}Check now</button>` : ''}</div><div class="panel-b">
+    <div class="panel spot"><div class="panel-h"><h2>Updates</h2>${d.updateConfigured ? `<button class="btn sm quiet" data-act="checkUpdate" type="button"${S.checking ? ' disabled' : ''}>${ico('reboot')}Check now</button>` : ''}</div><div class="panel-b">
       ${upd}
-      ${d.updateRepo ? setRow('autoUpdate', 'Check for updates automatically', 'Lets you know when a new version of AstroSpeed is ready.', d.autoUpdate) : ''}
+      ${d.updateConfigured ? setRow('autoUpdate', 'Check for updates automatically', 'Lets you know when a new version of AstroSpeed is ready.', d.autoUpdate) : ''}
     </div></div>
     ${packPanel(d)}
     <div class="panel spot"><div class="panel-h"><h2>Boosting</h2></div><div class="panel-b">
@@ -826,11 +826,38 @@ function showUpdate() {
   openModal(`
     <div class="dialog-h"><div class="upd-mark">${ico('arrow')}</div><div><h2>AstroSpeed ${esc(u.latest)} is ready</h2><p>You have version ${esc(u.current)}. Your tweaks, backups and settings carry over.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
     <div class="dialog-b"><div class="upd-notes">${u.title && u.title !== u.latest && u.title !== 'v' + u.latest ? `<h3>${esc(u.title)}</h3>` : ''}${notesHTML(u.notes)}</div>
-      <ol class="steps" style="margin-top:18px"><li>Click <b>Download update</b>. It downloads in your browser.</li><li>Close AstroSpeed.</li><li>Extract the download and replace your old <b>AstroSpeed Tweaks.exe</b> with the new one.</li></ol></div>
-    <div class="dialog-f"><button class="btn quiet" data-act="skipUpdate" type="button">Skip this version</button><span class="spacer"></span><button class="btn ghost" data-close type="button">Later</button><button class="btn primary" data-act="getUpdate" data-autofocus type="button">${ico('arrow', 'down')}Download update</button></div>`, true);
+      <div class="upd-prog" id="updProg" hidden><div class="upd-bar"><i id="updBarFill"></i></div><div class="upd-prog-txt" id="updProgTxt">Starting…</div></div></div>
+    <div class="dialog-f" id="updFoot"><button class="btn quiet" data-act="skipUpdate" type="button">Skip this version</button><span class="spacer"></span><button class="btn ghost" data-close type="button">Later</button><button class="btn primary" data-act="installUpdate" data-autofocus type="button">${ico('arrow', 'down')}Update now</button></div>`, true);
+}
+let updating = false;
+on('updateProgress', p => {
+  const box = $('#updProg'), fill = $('#updBarFill'), txt = $('#updProgTxt');
+  if (!box) return;
+  box.hidden = false;
+  const pct = Math.max(0, Math.min(100, p.pct || 0));
+  if (fill) fill.style.width = pct + '%';
+  if (txt) txt.textContent = p.done ? 'Finishing…' : (p.totalMB ? `Downloading… ${pct}% (${(p.receivedMB||0).toFixed(1)} of ${(p.totalMB||0).toFixed(1)} MB)` : `Downloading… ${pct}%`);
+});
+async function runUpdate() {
+  if (updating) return; updating = true;
+  const foot = $('#updFoot'), prog = $('#updProg');
+  const m = $('#modal'); if (m) m.dataset.locked = '1';
+  if (foot) foot.innerHTML = `<span class="muted small">Keep AstroSpeed open while it updates…</span>`;
+  if (prog) prog.hidden = false;
+  try {
+    await api('downloadUpdate');
+    const txt = $('#updProgTxt'); if (txt) txt.textContent = 'Installing and restarting…';
+    await api('applyUpdate');          // app relaunches itself; this window closes
+  } catch (e) {
+    updating = false;
+    if (m) delete m.dataset.locked;
+    if (prog) prog.hidden = true;
+    if (foot) foot.innerHTML = `<button class="btn quiet" data-act="skipUpdate" type="button">Skip this version</button><span class="spacer"></span><button class="btn ghost" data-close type="button">Later</button><button class="btn primary" data-act="installUpdate" type="button">Try again</button>`;
+    toast(e.message || 'Update failed.', 'err', 8000);
+  }
 }
 async function autoCheckUpdate() {
-  if (!S.data.updateRepo || !S.data.autoUpdate) return;
+  if (!S.data.updateConfigured || !S.data.autoUpdate) return;
   try {
     S.update = await api('checkUpdate');
     if (!S.update.available) return;
@@ -1532,7 +1559,7 @@ document.addEventListener('click', async e => {
     case 'toggle': toggleTweak(id); break;
     case 'crashDismiss': S.crashSeen = true; renderBanners(); break;
     case 'showUpdate': showUpdate(); break;
-    case 'getUpdate': if (S.update) { api('open', { target: S.update.download || S.update.page }).catch(err => toast(err.message, 'err')); closeModal(); toast('The update is downloading in your browser. Close AstroSpeed, then replace the old version with the new one.', 'info', 9000); } break;
+    case 'installUpdate': await runUpdate(); break;
     case 'skipUpdate': try { localStorage.setItem('sg-skip-version', S.update.latest); } catch (err) { /* ignore */ } closeModal(); toast(`You won't be reminded about ${S.update.latest}. Settings › Updates still shows it.`, 'info'); break;
     case 'refreshPack': S.packChecking = true; rerenderView(); try { const info = await api('refreshPack'); S.data.pack = info; } catch (err) { S.data.pack = Object.assign({}, S.data.pack, { error: err.message }); } S.packChecking = false; await reloadCatalog(S.data.pack); toast(S.data.pack.error ? S.data.pack.error : 'Live tweaks are up to date.', S.data.pack.error ? 'err' : 'ok'); break;
     case 'msgDismiss': prefSet('sg-msg-seen', (S.data.pack || {}).message || ''); renderBanners(); break;
