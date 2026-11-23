@@ -95,6 +95,10 @@ const catTweaks = c => T().filter(t => t.cat === c);
 const appliedCount = list => list.filter(t => isOn(t.id)).length;
 const availCount = list => list.filter(t => avail(t.id)).length;
 const pendingFor = p => T().filter(t => t.profile > 0 && t.profile <= p && avail(t.id) && !isOn(t.id));
+const LIC = () => (S.data && S.data.license) || { required: false, activated: true };
+const proUnlocked = () => { const l = LIC(); return !l.required || l.activated; };
+const locked = t => !!t.pro && !proUnlocked();
+const BUY_URL = 'https://timmeyfn.github.io/AstroSpeedTweaks/';
 
 const toolPages = [
   { id: 'checkup', title: 'PC checkup', icon: 'pulse', sub: 'A full scan of what is holding your FPS back, with a score and one-click fixes.' },
@@ -126,6 +130,7 @@ function renderNav() {
   $('#railFoot').innerHTML = `
     <div class="foot-row"><span class="dot ${S.data.admin ? 'on' : 'off'}"></span>${S.data.admin ? 'Running as administrator' : 'Not running as administrator'}</div>
     <div class="foot-row"><span class="dot ${gf ? 'on' : 'warn'}"></span>${gf ? plural(gf, 'game') + ' found' : 'No games found yet'}</div>
+    ${licenseChip()}
     ${S.update && S.update.available ? `<button class="upd-pill" data-act="showUpdate" type="button"><i></i>Update ${esc(S.update.latest)} available</button>` : `<div class="foot-row dim">Version ${esc(S.data.version)}</div>`}`;
   moveNavIndicator();
 }
@@ -698,6 +703,7 @@ function viewSettings() {
   else upd = `<p class="muted" style="margin:0">Not checked yet.</p>`;
   return `
   <div class="grid settings-grid">
+    ${licensePanel(d)}
     <div class="panel spot"><div class="panel-h"><h2>Appearance</h2></div><div class="panel-b">
       <div class="set-row"><div class="set-t"><b>Theme</b><span>Paper is light, Charcoal is dark.</span></div>
         <div class="seg"><button class="${theme === 'light' ? 'on' : ''}" data-act="theme" data-v="light" type="button">Paper</button><button class="${theme === 'dark' ? 'on' : ''}" data-act="theme" data-v="dark" type="button">Charcoal</button></div></div>
@@ -719,6 +725,14 @@ function viewSettings() {
   </div>`;
 }
 
+function licensePanel(d) {
+  const l = d.license || { required: false, activated: true };
+  if (!l.required) return '';
+  const body = l.activated
+    ? `<p style="margin:0;display:flex;align-items:center;gap:8px">${ico('ok','ico-ok')}<b>Full version unlocked</b>${l.offline ? ' <span class="muted">(offline — using your saved key)</span>' : ''}</p><p class="muted small" style="margin:8px 0 0">Key ${esc(l.key||'')} &middot; locked to this PC.</p>`
+    : `<p style="margin:0"><b>You're on the free version.</b></p><p class="muted small" style="margin:8px 0 14px">A key unlocks the full Optimize, all per-game tweaks, network/BIOS tweaks, auto-boost and the hotkey.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Enter a key</button><button class="btn sm ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button></div>`;
+  return `<div class="panel spot"><div class="panel-h"><h2>Your key</h2></div><div class="panel-b">${body}</div></div>`;
+}
 function packPanel(d) {
   const p = d.pack || {};
   let body;
@@ -746,6 +760,50 @@ async function reloadCatalog(info) {
     if (S.page.startsWith('cat:') && !S.data.categories.some(c => 'cat:' + c.id === S.page)) S.page = 'dashboard';
     renderNav(); renderBanners(); rerenderView();
   } catch (e) { /* keep what is on screen */ }
+}
+
+// ───────────────────────── licence (free vs key) ─────────────────────────
+function licenseChip() {
+  const l = LIC();
+  if (!l.required) return '';
+  if (l.activated) return `<div class="lic-chip on">${ico('ok','ico-ok')}<span>Full version${l.offline ? ' (offline)' : ''}</span></div>`;
+  return `<button class="lic-chip buy" data-act="upgrade" type="button">${ico('lock')}<span>Free version &middot; Unlock</span></button>`;
+}
+function showUpgrade() {
+  const proList = T().filter(t => t.pro);
+  openModal(`
+    <div class="dialog-h"><div><div class="eyebrow">AstroSpeed key</div><h2>Unlock the full version</h2><p>The free version gives you the dashboard, PC Checkup, Game Booster, cleaner and the safe recommended tweaks. A key unlocks everything else.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
+    <div class="dialog-b">
+      <div class="up-grid">
+        <div class="up-col"><h4>Free</h4><ul>${['Dashboard & PC Checkup','Game Booster & cleaner','Safe recommended tweaks','Ping test'].map(x=>`<li>${ico('check','ico-ok')}${x}</li>`).join('')}</ul></div>
+        <div class="up-col pro"><h4>${ico('lock')}With a key</h4><ul>${['Full one-click Optimize (Competitive)','All per-game tweaks','Network, GPU & BIOS tweaks','Auto-boost & the boost hotkey','Live tweaks sent to the app'].map(x=>`<li>${ico('check','ico-ok')}${x}</li>`).join('')}</ul></div>
+      </div>
+      <label class="key-in"><span>Already bought a key? Enter it:</span>
+        <input id="keyInput" type="text" autocomplete="off" spellcheck="false" placeholder="ASTRO-XXXXX-XXXXX-XXXXX" value="${esc((LIC().key||''))}">
+      </label>
+      <div id="keyErr" class="key-err"></div>
+    </div>
+    <div class="dialog-f"><button class="btn ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button><span class="spacer"></span><button class="btn secondary" data-close type="button">Not now</button><button class="btn primary" data-act="activateKey" data-autofocus type="button">${ico('check')}Activate</button></div>`);
+  const inp = $('#keyInput'); if (inp) { inp.focus(); inp.addEventListener('keydown', e => { if (e.key === 'Enter') doActivate(); }); }
+}
+async function doActivate() {
+  const inp = $('#keyInput'), err = $('#keyErr');
+  if (!inp) return;
+  const key = inp.value.trim();
+  if (key.length < 5) { err.textContent = 'Enter your key first.'; return; }
+  err.textContent = ''; const btn = $('[data-act="activateKey"]'); if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Checking…'; }
+  try {
+    const r = await api('activate', { key });
+    if (r && r.activated) {
+      closeModal();
+      S.data.license = r;
+      toast('Unlocked! Thanks for supporting AstroSpeed.', 'ok', 5000);
+      const nd = await api('init').catch(() => null);
+      if (nd) { S.data = Object.assign(S.data, { catalog: nd.catalog, license: nd.license }); }
+      renderNav(); rerenderView();
+    } else { err.textContent = (r && r.error) || 'That key didn\'t work.'; }
+  } catch (e) { err.textContent = e.message || 'Couldn\'t reach the server.'; }
+  if (btn) { btn.disabled = false; btn.innerHTML = `${ico('check')}Activate`; }
 }
 
 // ───────────────────────── update prompt ─────────────────────────
@@ -964,9 +1022,11 @@ function rowHTML(t) {
   const stateTag = s === 'native' ? `<span class="state-native">Already set on this PC</span>`
     : s === 'reset' ? `<span class="state-reset">${esc(why || 'Changed back since you applied it')}</span>`
     : s === 'na' ? `<span class="state-na">${esc(why || 'Not available')}</span>` : '';
+  const lk = locked(t);
   return `
-  <div class="row${s === 'na' ? ' na' : ''}" data-row="${t.id}">
-    <button class="switch${s === 'native' ? ' native' : ''}${busy ? ' busy' : ''}" role="switch" aria-checked="${on}" aria-label="${esc(t.title)}" data-act="toggle" data-id="${t.id}" type="button"${s === 'na' || busy ? ' disabled' : ''}></button>
+  <div class="row${s === 'na' ? ' na' : ''}${lk ? ' locked' : ''}" data-row="${t.id}">
+    ${lk ? `<button class="prolock" data-act="upgrade" type="button" aria-label="Unlock with a key" title="Unlock with a key">${ico('lock')}</button>`
+      : `<button class="switch${s === 'native' ? ' native' : ''}${busy ? ' busy' : ''}" role="switch" aria-checked="${on}" aria-label="${esc(t.title)}" data-act="toggle" data-id="${t.id}" type="button"${s === 'na' || busy ? ' disabled' : ''}></button>`}
     <div class="title">${esc(t.title)}</div>
     <div>${t.reboot ? `<span title="Needs a restart to take effect">${ico('reboot', 'reboot-ico')}</span>` : ''}</div>
     <div class="desc">${esc(t.desc)}</div>
@@ -977,6 +1037,7 @@ function rowHTML(t) {
       ${t.risk !== 'safe' ? `<span class="risk-${t.risk}">${t.risk === 'expert' ? 'Expert' : 'Moderate risk'}</span>` : '<span>Safe</span>'}
       <span>${profileWord(t.profile)}</span>
       ${t.online ? `<span class="from-pack">${ico('spark')}Live tweak</span>` : ''}
+      ${t.pro ? `<span class="pro-tag">${ico('lock')}Key</span>` : ''}
       ${stateTag}
       <button data-act="changes" data-id="${t.id}" type="button">${S.expanded.has(t.id) ? 'Hide changes' : 'What it changes'}</button>
     </div>
@@ -1321,8 +1382,8 @@ function openOptimize() {
   profileChoice = S.data.profile || 2;
   const rec = pendingFor(1), comp = pendingFor(2);
   const card = (p, name, list, bullets) => `
-    <button class="profile${profileChoice === p ? ' on' : ''}" data-profile="${p}" type="button">
-      <div class="p-name">${esc(name)}<span class="p-count">${list.length ? plural(list.length, 'tweak') + ' to apply' : 'All applied'}</span></div>
+    <button class="profile${profileChoice === p ? ' on' : ''}${p === 2 && !proUnlocked() ? ' prof-locked' : ''}" data-profile="${p}" type="button">
+      <div class="p-name">${esc(name)}${p === 2 && !proUnlocked() ? ` <span class="prof-lock">${ico('lock')}Key</span>` : ''}<span class="p-count">${list.length ? plural(list.length, 'tweak') + ' to apply' : 'All applied'}</span></div>
       <ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>
     </button>`;
   openModal(`
@@ -1353,8 +1414,8 @@ function runJob(kind, args, title, intro) {
     <div class="dialog-b"><div class="progress"><i id="jobBar"></i></div><div class="flight" id="flight"></div></div>
     <div class="dialog-f" id="jobFoot"><span class="muted small">Keep AstroSpeed open until this finishes.</span></div>`);
   const flight = $('#flight');
-  const icon = s => s === 'ok' || s === 'reverted' ? ico('ok', 'ico-ok') : s === 'already' ? ico('ok', 'ico-na') : s === 'partial' ? ico('warn', 'ico-warn') : s === 'failed' ? ico('bad', 'ico-bad') : ico('dash', 'ico-na');
-  const word = { ok: 'Applied', reverted: 'Undone', already: 'Already set', skipped: 'Not on this PC', partial: 'Partly applied', failed: 'Failed', nothing: 'Nothing to undo' };
+  const icon = s => s === 'ok' || s === 'reverted' ? ico('ok', 'ico-ok') : s === 'already' ? ico('ok', 'ico-na') : s === 'partial' ? ico('warn', 'ico-warn') : s === 'failed' ? ico('bad', 'ico-bad') : s === 'locked' ? ico('lock', 'ico-warn') : ico('dash', 'ico-na');
+  const word = { ok: 'Applied', reverted: 'Undone', already: 'Already set', skipped: 'Not on this PC', partial: 'Partly applied', failed: 'Failed', nothing: 'Nothing to undo', locked: 'Needs a key' };
   const off = on('progress', p => {
     if (p.phase === 'restore') { $('#jobNow').textContent = p.title + '…'; flight.insertAdjacentHTML('beforeend', `<div class="fl" id="flRestore"><div class="spin"></div><div>${esc(p.title)}</div><div class="m">This can take a minute</div></div>`); }
     if (p.phase === 'restore-ok' || p.phase === 'restore-failed') {
@@ -1422,6 +1483,7 @@ async function undoAll() {
 
 async function toggleTweak(id) {
   const t = byId(id), s = st(id);
+  if (locked(t)) { showUpgrade(); return; }
   if (s === 'native') { toast('Windows already had this set before AstroSpeed, so there is nothing to undo.', 'info'); return; }
   const turningOn = !(s === 'on');
   if (turningOn && t.risk === 'expert') {
@@ -1454,7 +1516,7 @@ document.addEventListener('click', async e => {
   if (e.target.closest('[data-close]')) { closeModal(); return; }
   if (e.target.id === 'modal') { closeModal(); return; }
   const pf = e.target.closest('[data-profile]');
-  if (pf) { profileChoice = +pf.dataset.profile; updateOptSummary(); return; }
+  if (pf) { const p = +pf.dataset.profile; if (p === 2 && !proUnlocked()) { showUpgrade(); return; } profileChoice = p; updateOptSummary(); return; }
   const dns = e.target.closest('[data-dns]');
   if (dns) {
     const ok = await confirmBox('Change DNS?', `This changes the DNS server on your active network adapters to <b>${esc(dns.textContent)}</b>. You can switch back to Automatic at any time.`, 'Change DNS');
@@ -1479,6 +1541,7 @@ document.addEventListener('click', async e => {
     case 'setting': {
       const key = b.dataset.key;
       if (key === 'motion') { applyMotion(document.documentElement.classList.contains('motion-off'), true); rerenderView(); break; }
+      if ((key === 'autoboost' || key === 'hotkey') && !proUnlocked()) { showUpgrade(); break; }
       if (key === 'autoboost') { try { S.data.autoBoost = await api('setAutoBoost', { on: !S.data.autoBoost }); } catch (err) { toast(err.message, 'err'); } rerenderView(); break; }
       const cur = key === 'startup' ? !!S.startupOn : !!S.data[key];
       try {
@@ -1493,6 +1556,9 @@ document.addEventListener('click', async e => {
       <div class="dialog-f"><span class="spacer"></span><button class="btn ghost" data-open="logs" type="button">${ico('ext')}Open log folder</button><button class="btn primary" data-close data-autofocus type="button">Close</button></div>`); S.crashSeen = true; renderBanners(); break;
     case 'changes': S.expanded.has(id) ? S.expanded.delete(id) : S.expanded.add(id); rerenderView(); break;
     case 'optimize': openOptimize(); break;
+    case 'upgrade': showUpgrade(); break;
+    case 'activateKey': await doActivate(); break;
+    case 'buyKey': api('open', { target: BUY_URL }).catch(() => {}); break;
     case 'startOptimize': {
       const ids = pendingFor(profileChoice).map(t => t.id);
       const restore = $('#optRestore').checked;

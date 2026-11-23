@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "1.6.0"
+const AppVersion = "1.7.0"
 
 //go:embed ui/dist/index.html
 var indexHTML string
@@ -87,6 +87,7 @@ func main() {
 	}
 	lastProbe = time.Now()
 	loadCachedPack()
+	go refreshLicense()
 	startGameDetection()
 	go refreshPackLoop()
 	stateMu.Lock()
@@ -239,6 +240,7 @@ func emit(event string, payload interface{}) {
 type tweakUI struct {
 	Tweak
 	Changes []string `json:"changes"`
+	Pro     bool     `json:"pro"`
 }
 
 func catalogByID() map[string]Tweak {
@@ -293,6 +295,7 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 			for _, a := range t.Actions {
 				u.Changes = append(u.Changes, a.Describe())
 			}
+			u.Pro = isPro(t)
 			tw = append(tw, u)
 		}
 		n, acts := CatalogStats()
@@ -305,7 +308,7 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		autoBoost, hotkey, autoUpdate := appState.AutoBoost, appState.Hotkey, !appState.NoAutoUpdate
 		stateMu.Unlock()
 		return map[string]interface{}{
-			"version": AppVersion, "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "updateRepo": updateRepo(), "pack": packStatus(),
+			"version": AppVersion, "license": refreshLicense(), "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "updateRepo": updateRepo(), "pack": packStatus(),
 			"tweakCount": n, "actionCount": acts, "env": getEnv(), "admin": isElevated(),
 			"profile": profile, "totalChanges": total, "lastOptimize": last, "restorePoints": rps,
 			"cleanTargets": cleanTargets, "dataDir": dataDir, "lastCrash": lastCrash,
@@ -455,6 +458,14 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		return readLive(), nil
 	case "drives":
 		return drives(), nil
+	case "licenseStatus":
+		return refreshLicense(), nil
+	case "activate":
+		var a struct {
+			Key string `json:"key"`
+		}
+		_ = parseArgs(args, &a)
+		return activateKey(a.Key)
 	case "checkUpdate":
 		return checkUpdate()
 	case "checkup":
@@ -652,6 +663,11 @@ func runJob(kind string, ids []string, restore bool, label string, profile int) 
 	changes := 0
 	for i, t := range list {
 		emit("progress", map[string]interface{}{"phase": "start", "i": i, "n": total, "id": t.ID, "title": t.Title})
+		if kind == "apply" && isPro(t) && !proUnlocked {
+			results = append(results, TweakResult{ID: t.ID, Title: t.Title, Status: "locked", Msg: "Needs a key"})
+			emit("progress", map[string]interface{}{"phase": "done", "i": i + 1, "n": total, "id": t.ID, "title": t.Title, "status": "locked", "msg": "Needs a key"})
+			continue
+		}
 		logf("%s: %s", verb, t.Title)
 		engine.mu.Lock()
 		var r TweakResult

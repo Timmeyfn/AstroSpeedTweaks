@@ -1,0 +1,73 @@
+Setting up the AstroSpeed key system (free, ~10 minutes)
+========================================================
+
+This gives you: paid keys that work once, lock to one PC, can't be shared,
+and that you can disable any time. It runs free on Cloudflare.
+
+You do this ONCE. After that you just make keys and hand them out.
+
+
+PART 1 — put the server online (Cloudflare Workers)
+---------------------------------------------------
+1. Make a free account at https://dash.cloudflare.com/sign-up
+2. In the dashboard, left menu: Compute (Workers) > "Create" > "Create Worker".
+   Give it a name like  astrospeed-keys  > Deploy.
+3. Click "Edit code". Delete everything in the editor.
+   Open worker.js (in this folder), copy ALL of it, paste it in, click "Deploy".
+4. Make the key storage:
+   - Left menu: Storage & Databases > KV > "Create a namespace".
+     Name it  LICENSES  > Add.
+   - Back in your Worker: Settings > Bindings > "Add" > "KV namespace".
+     Variable name:  LICENSES   Namespace:  LICENSES   > Deploy.
+5. Set your admin password:
+   - Worker > Settings > Variables and Secrets > "Add".
+     Type: Secret.  Name:  ADMIN_PASS   Value: a password only you know.  > Deploy.
+6. Copy your Worker's address. It looks like:
+        https://astrospeed-keys.YOURNAME.workers.dev
+   Open it in a browser — it should say "AstroSpeed key server is running."
+
+
+PART 2 — point the app at it
+----------------------------
+1. Open  license-url.txt  (in the main source folder).
+2. Put your Worker address on its own line, e.g.
+        https://astrospeed-keys.YOURNAME.workers.dev
+3. Run build.bat. Share the new AstroSpeed Tweaks.exe (or the installer).
+
+   IMPORTANT: if license-url.txt is left blank, the app stays 100% free with
+   everything unlocked. The paywall only turns on once you put your address in
+   and rebuild.
+
+
+PART 3 — making and managing keys
+---------------------------------
+Go to your Worker address with  /admin  on the end, e.g.
+        https://astrospeed-keys.YOURNAME.workers.dev/admin
+Enter your ADMIN_PASS. From there you can:
+  - Generate key(s): type how many, click Generate, copy them, send to buyers.
+  - See every key: unused / active (which PC) / disabled.
+  - Disable a key: the app locks on that PC the next time it opens.
+  - Unbind PC: frees a key so the same person can move it to a new PC.
+
+
+PART 4 — selling the keys
+-------------------------
+The sales website is in the  docs  folder. To put it online free:
+1. On your GitHub repo: Settings > Pages.
+2. Source: "Deploy from a branch". Branch: main, folder: /docs. Save.
+3. After a minute it's live at  https://timmeyfn.github.io/AstroSpeedTweaks/
+   (that's the address the app's "Get a key" button opens).
+
+To take payments, the easiest no-code options are Gumroad, Ko-fi or Lemon Squeezy:
+  - Make a product there, set your price.
+  - Copy its checkout link, open docs/index.html, and paste it into the
+    BUY_LINK line near the bottom. Commit. The "Get a key" button now works.
+Then, for now, the simple flow is: buyer pays -> you get the email ->
+you open /admin, Generate a key, and send it to them.
+(Later this can be automated so keys are emailed instantly; ask when you want that.)
+
+
+SAFE-KEEPING
+------------
+Your ADMIN_PASS is the only thing protecting your key list — keep it private.
+Turn on two-factor login on both GitHub and Cloudflare.
