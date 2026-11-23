@@ -1,7 +1,7 @@
 // AstroSpeed sales website — Cloudflare Worker.
-// Paste this whole file into the Worker you use for the website (astrospeed...workers.dev).
-// The download file is hosted free on Cloudflare Pages (no card needed) — see HOST THE DOWNLOAD.txt.
-// To change the site, edit the HTML in the backticks below and Deploy.
+// Paste this whole file into your WEBSITE worker (astrospeed.dupelication.workers.dev).
+// The download button is already wired to your uploaded exe. To change the site,
+// edit the HTML in the backticks below and Deploy.
 
 const HTML = `<!doctype html>
 <html lang="en">
@@ -284,7 +284,7 @@ const HTML = `<!doctype html>
 <script>
   // ─── EDIT THESE TWO LINES ───
   var BUY_LINK = "";   // paste your payment link (Gumroad / Ko-fi / Lemon Squeezy / PayPal). Blank = buttons show "Coming soon".
-  var DOWNLOAD_LINK = "";   // paste your download link (free Cloudflare Pages URL — see HOST THE DOWNLOAD.txt). Blank = "Coming soon".
+  var DOWNLOAD_LINK = "https://astrospeedtweaks.dupelication.workers.dev/AstroSpeed%20Tweaks.exe";
   // ────────────────────────────
   var dls = document.querySelectorAll('#dlBtn,#dlTop');
   if (DOWNLOAD_LINK) { dls.forEach(function(a){ a.href = DOWNLOAD_LINK; a.setAttribute('download',''); }); }
