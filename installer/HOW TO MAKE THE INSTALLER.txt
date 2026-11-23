@@ -1,0 +1,45 @@
+Making the AstroSpeed installer (the "next, next, finish" setup)
+================================================================
+
+This turns the single exe into AstroSpeed-Setup.exe: a normal installer that
+puts AstroSpeed in Program Files, adds a Start Menu shortcut (and an optional
+desktop shortcut), and gives people a proper Uninstall entry.
+
+ONE-TIME
+1. Download Inno Setup (free): https://jrsoftware.org/isdl.php  (the "isetup" exe)
+2. Install it.
+
+EACH TIME YOU HAVE A NEW BUILD
+1. Build the app so you have "AstroSpeed Tweaks.exe" (run build.bat).
+2. Copy "AstroSpeed Tweaks.exe" into this "installer" folder, next to AstroSpeed.iss.
+3. Double-click AstroSpeed.iss. Inno Setup opens.
+4. Press the Build menu > Compile  (or the green play button).
+5. AstroSpeed-Setup.exe appears in this folder. That's the installer you share.
+   (When you release a new version, change AppVersion at the top of AstroSpeed.iss.)
+
+
+ABOUT THE "WINDOWS PROTECTED YOUR PC" MESSAGE
+---------------------------------------------
+An installer does NOT make this go away, and neither does adding an antivirus
+exception - here is what's really happening and what actually helps.
+
+The warning is SmartScreen. Windows shows it for any program that isn't yet
+widely downloaded AND isn't signed with a paid code-signing certificate. The
+app isn't doing anything wrong; it just hasn't built up "reputation" yet.
+
+What does NOT help, and what to avoid:
+  - Telling people to turn off Windows Security or add an exclusion. That's
+    exactly what real viruses ask for, so it makes people trust it less, and
+    it leaves their PC unprotected. Don't do it.
+
+What actually helps:
+  - Tell people: on the blue warning, click "More info" then "Run anyway".
+    That is normal for small indie tools and is all most people need.
+  - The warning fades on its own as more people download the same exact file.
+  - The real fix is a code-signing certificate (about US$100-200/year from
+    sellers like Sectigo or DigiCert). Sign the exe and the installer with it
+    and the warning goes away. An EV certificate removes it immediately.
+  - If Defender ever deletes/quarantines the exe (not just warns), it's a
+    false positive. Submit the file at
+    https://www.microsoft.com/wdsi/filesubmission  and it usually clears in a
+    day or two for everyone.
