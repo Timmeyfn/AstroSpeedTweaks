@@ -1,0 +1,25 @@
+// AstroSpeed online pack. Lines starting with // are ignored.
+// Edit this on github.com (pencil icon) and press "Commit changes".
+// .bat files go in the "tweaks" folder instead. Full guide: HOW TO ADD ONLINE TWEAKS.txt
+{
+  "message": "",
+
+  "categories": [],
+
+  "tweaks": [],
+
+  "games": [
+    {
+      "id": "halo",
+      "name": "Halo Infinite",
+      "studio": "343 Industries",
+      "exes": ["HaloInfinite.exe"],
+      "color": "#3A7D44",
+      "steamDir": ["Halo Infinite"],
+      "rel": ["HaloInfinite.exe"],
+      "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1240440/header.jpg"
+    }
+  ],
+
+  "images": {}
+}

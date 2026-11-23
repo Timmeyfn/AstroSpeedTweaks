@@ -3,3 +3,4 @@
 # Then run build.bat. Every copy built after this checks that repository's
 # Releases page for new versions and offers the update when it opens.
 
+Timmeyfn/AstroSpeedTweaks

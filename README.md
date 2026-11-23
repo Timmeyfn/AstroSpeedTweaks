@@ -1,5 +1,7 @@
 # AstroSpeed Tweaks
 
+**Adding tweaks:** upload `.bat` files to the [`tweaks`](tweaks) folder, or edit [`astrospeed.json`](astrospeed.json). Every copy of the app picks changes up by itself, no rebuild needed. Guide: `HOW TO ADD ONLINE TWEAKS.txt`.
+
 A Windows PC optimizer for gamers: per-game tweaks for 12 games, 150+ reversible tweaks, one-click Optimize, a game booster, a system cleaner, startup manager, Fortnite server ping test and a BIOS checklist.
 
 ## Online pack (add tweaks without rebuilding)
