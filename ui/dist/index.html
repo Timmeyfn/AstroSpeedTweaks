@@ -855,7 +855,7 @@ const pendingFor = p => T().filter(t => t.profile > 0 && t.profile <= p && avail
 const LIC = () => (S.data && S.data.license) || { required: false, activated: true };
 const proUnlocked = () => { const l = LIC(); return !l.required || l.activated; };
 const locked = t => !!t.pro && !proUnlocked();
-const BUY_URL = 'https://timmeyfn.github.io/AstroSpeedTweaks/';
+const BUY_URL = 'https://astrospeed.dupelication.workers.dev/';
 
 const toolPages = [
   { id: 'checkup', title: 'PC checkup', icon: 'pulse', sub: 'A full scan of what is holding your FPS back, with a score and one-click fixes.' },
