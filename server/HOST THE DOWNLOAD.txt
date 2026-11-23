@@ -1,28 +1,35 @@
-Hosting the download on your own Cloudflare (no GitHub)
-=======================================================
+Hosting the download for free (Cloudflare Pages — no card needed)
+================================================================
 
-The website's "Download for Windows" button points at /download on your own site.
-You serve the .exe from Cloudflare R2 storage (free up to 10 GB). One-time setup:
+R2 asks for a card. Cloudflare PAGES does not, and it hosts files free.
+You'll put the .exe on Pages, then paste its link into the website.
 
-1. Get the .exe file:
+1. Get the .exe:
    - Unzip AstroSpeed-Tweaks-v1.7.0.zip. Inside is "AstroSpeed Tweaks.exe".
-     (Keep the name exactly as it is.)
+   - Rename it to  AstroSpeed.exe  (no spaces = a tidy link). It still runs the same.
 
-2. Make an R2 bucket:
-   - Cloudflare dashboard > R2 > "Create bucket". Name it e.g.  astrospeed-files  > Create.
-   - (R2 is free to turn on; it may ask you to add a card but the free tier covers this easily.)
+2. Put it on Cloudflare Pages:
+   - Cloudflare dashboard > Workers & Pages > Create.
+   - Click the "Pages" tab > "Upload assets" (direct upload, NOT the Git option).
+   - Project name:  astrospeed-download   > Create project.
+   - Drag  AstroSpeed.exe  into the upload box > Deploy site.
 
-3. Upload the file:
-   - Open the bucket > "Upload" > choose "AstroSpeed Tweaks.exe".
+3. Get the link:
+   - After it deploys, your file is at:
+        https://astrospeed-download.pages.dev/AstroSpeed.exe
+     (If Cloudflare gave the project a slightly different name, use that name.)
+   - Open that link in a browser to check it downloads the .exe.
 
-4. Connect the bucket to your WEBSITE worker (astrospeed...workers.dev):
-   - Open that Worker > Settings > Bindings > Add > "R2 bucket".
-     Variable name:  FILES      Bucket:  astrospeed-files     > Deploy.
+4. Put the link in the website:
+   - Open your website worker (astrospeed...workers.dev) > Edit code.
+   - Near the very bottom, find this line:
+        var DOWNLOAD_LINK = "";
+   - Put your link between the quotes:
+        var DOWNLOAD_LINK = "https://astrospeed-download.pages.dev/AstroSpeed.exe";
+   - Deploy.
 
-5. Make sure the website Worker is running website-worker.js, then Deploy.
+Done — the "Download for Windows" button now downloads your .exe, all on Cloudflare,
+nothing from GitHub.
 
-Test: open  https://astrospeed.dupelication.workers.dev/download  — it should download
-the .exe. The "Download for Windows" button now does the same.
-
-To ship a new version later: upload the new .exe to the bucket with the SAME name
-(AstroSpeed Tweaks.exe), replacing the old one. The button serves the new file.
+New version later: go to the Pages project > Create new deployment > upload the new
+AstroSpeed.exe (same name). The button serves the new file.

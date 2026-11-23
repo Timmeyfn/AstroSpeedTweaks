@@ -279,9 +279,11 @@
 <script>
   // ─── EDIT THESE TWO LINES ───
   var BUY_LINK = "";   // paste your payment link (Gumroad / Ko-fi / Lemon Squeezy / PayPal). Blank = buttons show "Coming soon".
-  var DOWNLOAD_LINK = "/download";   // served from your Cloudflare R2 storage (see setup notes)
+  var DOWNLOAD_LINK = "";   // paste your download link (free Cloudflare Pages URL — see HOST THE DOWNLOAD.txt). Blank = "Coming soon".
   // ────────────────────────────
-  document.querySelectorAll('#dlBtn,#dlTop').forEach(function(a){ a.href = DOWNLOAD_LINK; a.setAttribute('download',''); });
+  var dls = document.querySelectorAll('#dlBtn,#dlTop');
+  if (DOWNLOAD_LINK) { dls.forEach(function(a){ a.href = DOWNLOAD_LINK; a.setAttribute('download',''); }); }
+  else { dls.forEach(function(a){ a.style.opacity = '.6'; a.style.pointerEvents = 'none'; if (a.id === 'dlBtn') a.textContent = 'Coming soon'; }); }
   var buy = document.getElementById('buyBtn');
   if (BUY_LINK) { buy.href = BUY_LINK; } else { buy.textContent = "Coming soon"; buy.style.opacity = ".6"; buy.style.pointerEvents = "none"; }
 
