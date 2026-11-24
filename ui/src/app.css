@@ -688,3 +688,4 @@ table.ping{width:100%;border-collapse:collapse;font-size:14px}
 .upd-prog-txt{margin-top:10px;font-size:13px;color:var(--ink-2);font-weight:600;font-variant-numeric:tabular-nums}
 .key-problem{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-weight:600;color:var(--warn)}
 .key-problem svg{width:16px;height:16px;flex:none}
+.lic-chip.trial{background:var(--accent-soft);color:var(--accent);cursor:pointer}

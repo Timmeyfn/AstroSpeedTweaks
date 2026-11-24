@@ -33,15 +33,22 @@ type licenseFile struct {
 	Key    string `json:"key"`
 	HWID   string `json:"hwid,omitempty"`
 	LastOK int64  `json:"lastOK,omitempty"` // unix time of the last successful online check
-	State  string `json:"state,omitempty"`  // "", "disabled", "other_pc", "invalid"
+	State  string `json:"state,omitempty"`  // "", "disabled", "other_pc", "invalid", "expired"
+	// Trial keys
+	ExpiresAt int64 `json:"expiresAt,omitempty"` // unix ms; 0 = never
 }
 
 type licenseStatus struct {
-	Required  bool   `json:"required"`          // a server is configured, so pro features need a key
-	Activated bool   `json:"activated"`         // pro features are unlocked on this PC
-	Key       string `json:"key"`               // masked
-	Offline   bool   `json:"offline"`           // using the saved result because the server didn't answer
-	Problem   string `json:"problem,omitempty"` // why a saved key stopped working
+	Required  bool   `json:"required"`            // a server is configured, so pro features need a key
+	Activated bool   `json:"activated"`           // pro features are unlocked on this PC
+	Key       string `json:"key"`                 // masked
+	Offline   bool   `json:"offline"`             // using the saved result because the server didn't answer
+	Problem   string `json:"problem,omitempty"`   // why a saved key stopped working
+	Trial     bool   `json:"trial,omitempty"`     // this key runs out
+	ExpiresAt int64  `json:"expiresAt,omitempty"` // unix ms
+	Expired   bool   `json:"expired,omitempty"`   // the trial has ended
+	// NeedsRevert: the trial ended and the paid tweaks it unlocked haven't been undone yet
+	NeedsRevert bool `json:"needsRevert,omitempty"`
 }
 
 var (
@@ -84,6 +91,8 @@ func problemText(state string) string {
 		return "This key is activated on a different PC."
 	case "invalid":
 		return "This key isn't valid any more."
+	case "expired":
+		return "Your trial has ended."
 	}
 	return ""
 }
@@ -106,15 +115,26 @@ func writeLicense(lf licenseFile) {
 
 // evaluate works out the status from the saved file alone (no network).
 func evaluate(lf licenseFile) licenseStatus {
-	if serverURL() == "" {
+	if keyServerURL() == "" {
 		return licenseStatus{Required: false, Activated: true}
 	}
 	st := licenseStatus{Required: true}
 	if lf.Key == "" {
+		st.NeedsRevert = trialNeedsRevert(st) // e.g. the licence file was deleted during a trial
 		return st
 	}
 	st.Key = maskKey(lf.Key)
 	me := hwid()
+	if lf.ExpiresAt > 0 {
+		st.Trial, st.ExpiresAt = true, lf.ExpiresAt
+		// checked locally too, so a trial still ends with no internet
+		if time.Now().UnixMilli() >= lf.ExpiresAt && lf.State == "" {
+			lf.State = "expired"
+		}
+	}
+	if lf.State == "expired" {
+		st.Expired = true
+	}
 	switch {
 	case lf.HWID != "" && lf.HWID != me:
 		st.Problem = "This key was activated on a different PC."
@@ -127,6 +147,7 @@ func evaluate(lf licenseFile) licenseStatus {
 	default:
 		st.Problem = "AstroSpeed needs to go online to confirm your key."
 	}
+	st.NeedsRevert = trialNeedsRevert(st)
 	return st
 }
 
@@ -175,7 +196,7 @@ func postJSON(url string, in interface{}, timeout time.Duration) (map[string]int
 // refreshLicenseOnline asks the server about the saved key and updates the window if anything changed.
 func refreshLicenseOnline() {
 	defer func() { _ = recover() }()
-	srv := serverURL()
+	srv := keyServerURL()
 	lf := readLicense()
 	if srv == "" || lf.Key == "" || (lf.HWID != "" && lf.HWID != hwid()) {
 		return
@@ -188,11 +209,16 @@ func refreshLicenseOnline() {
 		logf("Key check: server didn't answer (%v, HTTP %d); using the saved result", err, code)
 	} else if ok, _ := res["ok"].(bool); ok {
 		lf.HWID, lf.LastOK, lf.State = hwid(), time.Now().Unix(), ""
+		if exp, ok := res["expiresAt"].(float64); ok && exp > 0 {
+			lf.ExpiresAt = int64(exp) // the admin may have extended it
+		} else {
+			lf.ExpiresAt = 0
+		}
 		writeLicense(lf)
 		st = evaluate(lf)
 	} else {
 		reason, _ := res["reason"].(string)
-		if reason == "disabled" || reason == "other_pc" || reason == "invalid" {
+		if reason == "disabled" || reason == "other_pc" || reason == "invalid" || reason == "expired" {
 			lf.State = reason
 			writeLicense(lf)
 			st = evaluate(lf)
@@ -208,7 +234,7 @@ func refreshLicenseOnline() {
 
 // activateKey is called from the "enter your key" box.
 func activateKey(key string) (licenseStatus, error) {
-	srv := serverURL()
+	srv := keyServerURL()
 	if srv == "" {
 		return licenseStatus{Required: false, Activated: true}, nil
 	}
@@ -231,6 +257,12 @@ func activateKey(key string) (licenseStatus, error) {
 		return licenseStatusNow(), errors.New(reason)
 	}
 	lf := licenseFile{Key: key, HWID: hwid(), LastOK: time.Now().Unix()}
+	if exp, ok := res["expiresAt"].(float64); ok && exp > 0 {
+		lf.ExpiresAt = int64(exp)
+		writeTrialMark(trialMark{Key: key, ExpiresAt: lf.ExpiresAt})
+	} else {
+		_ = os.Remove(trialMarkPath()) // a full key: nothing to undo later
+	}
 	writeLicense(lf)
 	st := evaluate(lf)
 	setLicense(st)
@@ -244,4 +276,72 @@ func removeKey() licenseStatus {
 	st := evaluate(licenseFile{})
 	setLicense(st)
 	return st
+}
+
+// A trial leaves a separate mark, so deleting license.json can't keep the paid tweaks:
+// whenever the trial is over (expired, removed or the file is gone) and no full key is active,
+// the window undoes the paid tweaks and then calls markTrialReverted.
+type trialMark struct {
+	Key       string `json:"key"`
+	ExpiresAt int64  `json:"expiresAt"`
+	Reverted  bool   `json:"reverted,omitempty"`
+}
+
+func trialMarkPath() string { return filepath.Join(dataDir, "trial.json") }
+
+func readTrialMark() (trialMark, bool) {
+	var m trialMark
+	b, err := os.ReadFile(trialMarkPath())
+	if err != nil || json.Unmarshal(b, &m) != nil || m.Key == "" {
+		return m, false
+	}
+	return m, true
+}
+
+func writeTrialMark(m trialMark) {
+	b, _ := json.Marshal(m)
+	_ = os.WriteFile(trialMarkPath(), b, 0o644)
+}
+
+func trialNeedsRevert(st licenseStatus) bool {
+	m, ok := readTrialMark()
+	if !ok || m.Reverted {
+		return false
+	}
+	if st.Activated && !st.Expired {
+		return false // trial still running, or a full key is active
+	}
+	return true
+}
+
+// markTrialReverted is called by the window once the paid tweaks have been undone after a trial.
+func markTrialReverted() licenseStatus {
+	if m, ok := readTrialMark(); ok {
+		m.Reverted = true
+		writeTrialMark(m)
+	}
+	st := evaluate(readLicense())
+	setLicense(st)
+	return st
+}
+
+// trialActive reports whether the saved key is a trial that is still running.
+func trialActive() bool {
+	st := licenseStatusNow()
+	return st.Trial && st.Activated && !st.Expired
+}
+
+// watchTrial re-checks once a minute so a trial ends on time even while the app stays open.
+func watchTrial() {
+	defer func() { _ = recover() }()
+	for {
+		time.Sleep(time.Minute)
+		lf := readLicense()
+		if lf.ExpiresAt == 0 {
+			continue
+		}
+		if setLicense(evaluate(lf)) {
+			emit("license", licenseStatusNow())
+		}
+	}
 }

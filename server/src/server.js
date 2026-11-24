@@ -150,6 +150,7 @@ function keyMeta(rec) {
   return {
     createdAt: rec.createdAt || 0, activatedAt: rec.activatedAt || 0, hwid: rec.hwid || "", revoked: !!rec.revoked,
     note: String(rec.note || "").slice(0, 200), source: rec.source || "", sale: rec.sale || "",
+    trialMs: rec.trialMs || 0, expiresAt: rec.expiresAt || 0,
   };
 }
 async function putKey(env, key, rec) {
@@ -270,14 +271,16 @@ async function activate(request, env) {
   const rec = await env.LICENSES.get(k, "json");
   if (!rec) return json({ ok: false, code: "invalid", reason: "That key isn't valid. Check it was copied exactly." });
   if (rec.revoked) return json({ ok: false, code: "disabled", reason: "This key has been disabled." });
+  if (rec.expiresAt && Date.now() >= rec.expiresAt) return json({ ok: false, code: "expired", reason: "This trial key has ended." });
   if (rec.hwid && rec.hwid !== hwid)
     return json({ ok: false, code: "other_pc", reason: "This key is already activated on another PC." });
   if (!rec.hwid) {
     rec.hwid = hwid;
     rec.activatedAt = Date.now();
+    if (rec.trialMs && !rec.expiresAt) rec.expiresAt = Date.now() + rec.trialMs; // a trial's clock starts now
     await putKey(env, k, rec);
   }
-  return json({ ok: true, key: k });
+  return json({ ok: true, key: k, expiresAt: rec.expiresAt || 0 });
 }
 
 async function check(request, env) {
@@ -287,9 +290,10 @@ async function check(request, env) {
   const rec = await env.LICENSES.get(k, "json");
   if (!rec) return json({ ok: false, reason: "invalid" });
   if (rec.revoked) return json({ ok: false, reason: "disabled" });
+  if (rec.expiresAt && Date.now() >= rec.expiresAt) return json({ ok: false, reason: "expired" });
   if (!rec.hwid) return json({ ok: false, reason: "not_activated" }); // e.g. just reset, or storage still catching up
   if (rec.hwid !== hwid) return json({ ok: false, reason: "other_pc" });
-  return json({ ok: true });
+  return json({ ok: true, expiresAt: rec.expiresAt || 0 });
 }
 
 // ───────────────────────── payments (Stripe) ─────────────────────────
@@ -530,7 +534,10 @@ async function adminApi(request, env) {
     const made = [];
     for (let i = 0; i < n; i++) {
       const key = newKey();
-      await putKey(env, key, { createdAt: Date.now(), hwid: null, revoked: false, note: String(body.note || "").slice(0, 200), source: "admin" });
+      const days = Math.min(Math.max(Number(body.trialDays) || 0, 0), 365);
+      const rec = { createdAt: Date.now(), hwid: null, revoked: false, note: String(body.note || "").slice(0, 200), source: "admin" };
+      if (days > 0) rec.trialMs = Math.round(days * 86400000); // counts from when it's activated
+      await putKey(env, key, rec);
       made.push(key);
     }
     return json({ ok: true, made });
@@ -551,6 +558,19 @@ async function adminApi(request, env) {
     }
     await putKey(env, k, rec);
     return json({ ok: true });
+  }
+  if (action === "extend" || action === "makeFull") {
+    const k = normKey(body.key);
+    const rec = await env.LICENSES.get(k, "json");
+    if (!rec) return json({ ok: false, reason: "That key doesn't exist." });
+    if (action === "makeFull") { delete rec.trialMs; delete rec.expiresAt; }
+    else {
+      const add = Math.min(Math.max(Number(body.days) || 7, 1), 365) * 86400000;
+      if (rec.expiresAt) rec.expiresAt = Math.max(Date.now(), rec.expiresAt) + add;
+      else rec.trialMs = (rec.trialMs || 0) + add;
+    }
+    await putKey(env, k, rec);
+    return json({ ok: true, rec: keyMeta(rec) });
   }
   if (action === "note") {
     const k = normKey(body.key);

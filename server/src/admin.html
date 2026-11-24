@@ -60,6 +60,7 @@ tr:last-child td{border-bottom:0}
 .k{font-family:ui-monospace,Consolas,monospace;font-weight:700;white-space:nowrap}
 .hw{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--ink2)}
 .tag{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.t-trial{background:rgba(255,107,63,.15);color:var(--accent)}
 .t-unused{background:rgba(242,179,71,.16);color:var(--warn)}.t-active{background:rgba(79,194,126,.16);color:var(--ok)}.t-revoked{background:rgba(255,90,110,.16);color:var(--bad)}
 .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .cp{background:none;border:0;color:var(--ink3);padding:2px 5px;font-weight:400}
@@ -115,6 +116,7 @@ tr:last-child td{border-bottom:0}
       <div id="made"></div>
       <div class="bar">
         <input id="count" type="number" value="1" min="1" max="50" style="width:80px" title="How many keys">
+        <select id="kind" style="width:auto"><option value="0">Full key (forever)</option><option value="1">Trial · 1 day</option><option value="3">Trial · 3 days</option><option value="7">Trial · 7 days</option><option value="14">Trial · 14 days</option><option value="30">Trial · 30 days</option></select>
         <input id="note" class="grow" placeholder="Note (optional), e.g. who it's for">
         <button id="gen" type="button">+ Make keys</button>
       </div>
@@ -291,7 +293,13 @@ tr:last-child td{border-bottom:0}
   });
 
   // ── keys ──
-  function statusOf(r) { return r.revoked ? "revoked" : (r.hwid ? "active" : "unused"); }
+  function statusOf(r) { return r.revoked ? "revoked" : (r.expiresAt && Date.now() >= r.expiresAt) ? "expired" : (r.hwid ? "active" : "unused"); }
+  function left(ms) { var d = ms - Date.now(); if (d <= 0) return "ended"; var h = Math.floor(d / 36e5); return h >= 24 ? Math.floor(h / 24) + "d " + (h % 24) + "h left" : h >= 1 ? h + "h left" : Math.ceil(d / 6e4) + " min left"; }
+  function trialTag(k) {
+    if (k.expiresAt) return ' <span class="tag t-trial">trial · ' + esc(left(k.expiresAt)) + "</span>";
+    if (k.trialMs) return ' <span class="tag t-trial">' + Math.round(k.trialMs / 864e5) + "-day trial</span>";
+    return "";
+  }
   var FRESH = {}; // keys made in this session, shown even before Cloudflare's list catches up
   function loadKeys() { return api("keys").then(function (d) {
     KEYS = d.rows || [];
@@ -310,9 +318,10 @@ tr:last-child td{border-bottom:0}
       var acts = '<div class="acts">' +
         (k.revoked ? '<button class="sm g" data-a="enable" data-k="' + key + '" type="button">Enable</button>' : '<button class="sm g" data-a="revoke" data-k="' + key + '" type="button">Disable</button>') +
         (k.hwid ? '<button class="sm g" data-a="unbind" data-k="' + key + '" type="button" title="Lets the key be activated on a different PC">Reset PC</button>' : "") +
+        ((k.trialMs || k.expiresAt) ? '<button class="sm g" data-a="extend" data-k="' + key + '" type="button" title="Add 7 more days">+7 days</button><button class="sm g" data-a="makeFull" data-k="' + key + '" type="button" title="Turn this trial into a full key">Make full</button>' : "") +
         '<button class="sm dz" data-a="delete" data-k="' + key + '" type="button">Delete</button></div>';
       return "<tr><td><span class=\"k\">" + key + '</span><button class="cp" data-cp="' + key + '" type="button" title="Copy">copy</button></td>' +
-        '<td><span class="tag t-' + s + '">' + (s === "unused" ? "not used" : s === "revoked" ? "disabled" : "activated") + "</span></td>" +
+        '<td><span class="tag t-' + (s === "expired" ? "revoked" : s) + '">' + (s === "unused" ? "not used" : s === "revoked" ? "disabled" : s === "expired" ? "trial ended" : "activated") + "</span>" + trialTag(k) + "</td>" +
         "<td>" + (k.note ? esc(k.note) : '<span class="muted">—</span>') + (k.source === "stripe" ? ' <span class="tag t-active">sold</span>' : "") + "</td>" +
         '<td class="hw" title="' + esc(k.hwid || "") + '">' + (k.hwid ? esc(k.hwid.slice(0, 10)) + "…" : '<span class="muted">—</span>') + "</td>" +
         '<td class="muted small">' + fmtDate(k.createdAt) + "</td><td>" + acts + "</td></tr>";
@@ -326,10 +335,11 @@ tr:last-child td{border-bottom:0}
     if (a === "delete" && !confirm("Delete " + key + " for good? The app stops working on that PC.")) return;
     if (a === "revoke" && !confirm("Disable " + key + "? The app locks on that PC next time it opens.")) return;
     if (a === "unbind" && !confirm("Reset " + key + " so it can be activated on another PC?")) return;
+    if (a === "makeFull" && !confirm("Turn " + key + " into a full key that never runs out?")) return;
     b.disabled = true;
-    api(a, { key: key }).then(function () {
+    api(a, { key: key, days: 7 }).then(function (res) {
       toast("Done");
-      KEYS.forEach(function (k) { if (k.key !== key) return; if (a === "revoke") k.revoked = true; if (a === "enable") k.revoked = false; if (a === "unbind") k.hwid = null; });
+      KEYS.forEach(function (k) { if (k.key !== key) return; if (a === "revoke") k.revoked = true; if (a === "enable") k.revoked = false; if (a === "unbind") k.hwid = null; if (res && res.rec) { k.expiresAt = res.rec.expiresAt; k.trialMs = res.rec.trialMs; } });
       if (a === "delete") { KEYS = KEYS.filter(function (k) { return k.key !== key; }); if (FRESH[key]) FRESH[key].deleted = true; }
       drawKeys();
     }).catch(function (err) { alert(err.message); b.disabled = false; });
@@ -338,10 +348,11 @@ tr:last-child td{border-bottom:0}
   $("refreshKeys").addEventListener("click", loadKeys);
   $("gen").addEventListener("click", function () {
     var b = $("gen"); b.disabled = true;
-    api("generate", { count: $("count").value, note: $("note").value }).then(function (d) {
+    var trialDays = Number($("kind").value) || 0;
+    api("generate", { count: $("count").value, note: $("note").value, trialDays: trialDays }).then(function (d) {
       var list = d.made.join("\n");
-      d.made.forEach(function (k) { FRESH[k] = { key: k, createdAt: Date.now(), hwid: null, revoked: false, note: $("note").value, source: "admin" }; });
-      $("made").innerHTML = '<div class="made"><b>New key' + (d.made.length > 1 ? "s" : "") + '</b> — copy and send to the person:<div class="keys">' + esc(list) + '</div><button class="sm" id="cpAll" type="button">Copy</button></div>';
+      d.made.forEach(function (k) { FRESH[k] = { key: k, createdAt: Date.now(), hwid: null, revoked: false, note: $("note").value, source: "admin", trialMs: trialDays * 86400000 }; });
+      $("made").innerHTML = '<div class="made"><b>New ' + (trialDays ? trialDays + "-day trial key" : "key") + (d.made.length > 1 ? "s" : "") + '</b>' + (trialDays ? " (the clock starts when it's activated)" : "") + ' — copy and send to the person:<div class="keys">' + esc(list) + '</div><button class="sm" id="cpAll" type="button">Copy</button></div>';
       $("cpAll").addEventListener("click", function () { copy(list); });
       $("note").value = "";
       return loadKeys();

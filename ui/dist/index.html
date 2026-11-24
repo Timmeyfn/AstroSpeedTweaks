@@ -696,6 +696,7 @@ table.ping{width:100%;border-collapse:collapse;font-size:14px}
 .upd-prog-txt{margin-top:10px;font-size:13px;color:var(--ink-2);font-weight:600;font-variant-numeric:tabular-nums}
 .key-problem{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-weight:600;color:var(--warn)}
 .key-problem svg{width:16px;height:16px;flex:none}
+.lic-chip.trial{background:var(--accent-soft);color:var(--accent);cursor:pointer}
 
 </style>
 </head>
@@ -864,6 +865,14 @@ const lockedFor = p => T().filter(t => t.profile > 0 && t.profile <= p && avail(
 const LIC = () => (S.data && S.data.license) || { required: false, activated: true };
 const proUnlocked = () => { const l = LIC(); return !l.required || l.activated; };
 const locked = t => !!t.pro && !proUnlocked();
+function timeLeft(ms) {
+  const d = ms - Date.now();
+  if (d <= 0) return 'ended';
+  const h = Math.floor(d / 3600e3), days = Math.floor(h / 24);
+  if (days >= 1) return `${days}d ${h % 24}h left`;
+  if (h >= 1) return `${h}h left`;
+  return `${Math.max(1, Math.ceil(d / 60e3))} min left`;
+}
 const shopURL = () => ((S.data && S.data.server) || '') + '/#pricing';
 
 const toolPages = [
@@ -1494,7 +1503,9 @@ function viewSettings() {
 function licensePanel(d) {
   const l = d.license || { required: false, activated: true };
   if (!l.required) return '';
-  const body = l.activated
+  const body = l.activated && l.trial
+    ? `<p style="margin:0;display:flex;align-items:center;gap:8px">${ico('clock')}<b>Trial · ${esc(timeLeft(l.expiresAt))}</b></p><p class="muted small" style="margin:8px 0 12px">Ends ${esc(new Date(l.expiresAt).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}. When it ends, the paid tweaks it unlocked are undone automatically and the app goes back to the free version. Buy a key to keep everything.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="buyKey" type="button">${ico('ext')}Buy a key</button><button class="btn sm quiet" data-act="upgrade" type="button">Enter a full key</button><button class="btn sm quiet" data-act="removeKey" type="button">End trial now</button></div>`
+    : l.activated
     ? `<p style="margin:0;display:flex;align-items:center;gap:8px">${ico('ok','ico-ok')}<b>Full version unlocked</b>${l.offline ? ' <span class="muted">(offline — using your saved key)</span>' : ''}</p><p class="muted small" style="margin:8px 0 12px">Key ${esc(l.key||'')} &middot; locked to this PC.</p><div class="actions" style="margin:0"><button class="btn sm quiet" data-act="removeKey" type="button">Remove key from this PC</button></div>`
     : `${l.problem ? `<p class="key-problem">${ico('warn','ico-warn')}${esc(l.problem)}</p>` : ''}<p style="margin:0"><b>You're on the free version.</b></p><p class="muted small" style="margin:8px 0 14px">A key unlocks the full Optimize, all per-game tweaks, network/BIOS tweaks, auto-boost and the hotkey.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Enter a key</button><button class="btn sm ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button></div>`;
   return `<div class="panel spot"><div class="panel-h"><h2>Your key</h2></div><div class="panel-b">${body}</div></div>`;
@@ -1532,6 +1543,7 @@ async function reloadCatalog(info) {
 function licenseChip() {
   const l = LIC();
   if (!l.required) return '';
+  if (l.activated && l.trial) return `<button class="lic-chip trial" data-act="upgrade" type="button">${ico('clock')}<span>Trial · ${esc(timeLeft(l.expiresAt))}</span></button>`;
   if (l.activated) return `<div class="lic-chip on">${ico('ok','ico-ok')}<span>Full version${l.offline ? ' (offline)' : ''}</span></div>`;
   return `<button class="lic-chip buy" data-act="upgrade" type="button">${ico('lock')}<span>Free version &middot; Unlock</span></button>`;
 }
@@ -2352,7 +2364,7 @@ document.addEventListener('click', async e => {
     case 'changes': S.expanded.has(id) ? S.expanded.delete(id) : S.expanded.add(id); rerenderView(); break;
     case 'optimize': openOptimize(); break;
     case 'upgrade': showUpgrade(); break;
-    case 'removeKey': if (await confirmBox('Remove your key from this PC?', 'The app goes back to the free version here. You can enter the key again any time, on this PC only.', 'Remove key')) { try { S.data.license = await api('removeKey'); toast('Key removed from this PC.', 'info'); } catch (err) { toast(err.message, 'err'); } renderNav(); rerenderView(); } break;
+    case 'removeKey': if (await confirmBox(LIC().trial ? 'End your trial now?' : 'Remove your key from this PC?', LIC().trial ? 'The paid tweaks your trial unlocked are undone first, then the app goes back to the free version.' : 'The app goes back to the free version here. You can enter the key again any time, on this PC only.', LIC().trial ? 'End trial' : 'Remove key', !!LIC().trial)) { try { S.data.license = await api('removeKey'); toast('Key removed from this PC.', 'info'); } catch (err) { toast(err.message, 'err'); } renderNav(); rerenderView(); } break;
     case 'activateKey': await doActivate(); break;
     case 'buyKey': if (S.data.server) api('open', { target: shopURL() }).catch(() => {}); break;
     case 'startOptimize': {
@@ -2462,7 +2474,25 @@ window.addEventListener('resize', () => {
 // ───────────────────────── boot ─────────────────────────
 $('#view').addEventListener('scroll', updateScrollBar, { passive: true });
 on('hotkeyboost', d => toast(`Boosted${d.game ? ' ' + d.game : ''}: ${Math.max(0, Math.round(d.freedMB))} MB memory freed, timer tightened.`, 'ok', 5000));
-on('license', l => { S.data.license = l; renderNav(); rerenderView(); if (l.problem && !l.activated) toast(l.problem + ' The app is back on the free version.', 'err', 9000); });
+on('license', l => { S.data.license = l; renderNav(); rerenderView(); if (l.needsRevert) enforceTrialEnd(); else if (l.problem && !l.activated) toast(l.problem + ' The app is back on the free version.', 'err', 9000); });
+// When a trial is over (or its key was removed), undo every paid tweak it applied, then tell the backend.
+let trialEnding = false;
+async function enforceTrialEnd() {
+  const l = LIC();
+  if (!l.needsRevert || trialEnding) return;
+  trialEnding = true;
+  try {
+    await refreshStates();
+    const ids = T().filter(t => t.pro && ['on', 'reset'].includes(st(t.id))).map(t => t.id);
+    const m = $('#modal');
+    if (!m.hidden) { delete m.dataset.locked; closeModal(); await new Promise(r => setTimeout(r, 350)); }
+    if (ids.length) await runJob('revert', { ids }, 'Your trial has ended', 'Putting your PC back the way it was before the trial…');
+    S.data.license = await api('trialReverted');
+    renderNav(); rerenderView();
+    toast(ids.length ? `Your trial has ended. ${plural(ids.length, 'paid tweak')} ${ids.length === 1 ? 'was' : 'were'} undone. Buy a key to get them back.` : 'Your trial has ended.', 'info', 9000);
+  } catch (e) { toast(e.message || 'Couldn\'t undo the trial tweaks. They will be undone next time AstroSpeed opens.', 'err', 9000); }
+  trialEnding = false;
+}
 on('packUpdated', info => { const had = (S.data && S.data.pack) || {}; reloadCatalog(info).then(() => { if (info.tweaks > (had.tweaks || 0) || info.games > (had.games || 0)) toast('New live tweaks just arrived.', 'ok', 5000); }); });
 on('autoboost', d => toast(`${d.game} started. Boosted: memory cleared, timer tightened, high priority.`, 'ok', 6000));
 $('#themeBtn').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
@@ -2490,7 +2520,7 @@ $('#motionBtn').addEventListener('click', () => { applyMotion(document.documentE
     $('#app').classList.add('ready');
     S.splashGone = true;
     if (S.data) { S.anim = true; render(); }
-    if (S.data) { api('drives').then(d => { S.drives = d || []; if (S.page === 'dashboard') rerenderView(); }).catch(() => {}); setTimeout(autoCheckUpdate, 1200); }
+    if (S.data) { api('drives').then(d => { S.drives = d || []; if (S.page === 'dashboard') rerenderView(); }).catch(() => {}); setTimeout(autoCheckUpdate, 1200); if (LIC().needsRevert) setTimeout(enforceTrialEnd, 900); }
     setTimeout(() => $('#splash').remove(), 1400);
   }, wait);
 })();

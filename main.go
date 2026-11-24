@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "1.9.0"
+const AppVersion = "1.9.1"
 
 // versionMarker lets the admin page read the version straight out of an uploaded exe.
 const versionMarker = "ASTROSPEED_VERSION=" + AppVersion + ";"
@@ -118,6 +118,7 @@ func main() {
 	loadLicense()
 	loadCachedPack()
 	go refreshLicenseOnline()
+	go watchTrial()
 	logf("%s", versionMarker)
 	startGameDetection()
 	go refreshPackLoop()
@@ -494,6 +495,10 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		return licenseStatusNow(), nil
 	case "removeKey":
 		return removeKey(), nil
+	case "trialReverted":
+		st := markTrialReverted()
+		emit("license", st)
+		return st, nil
 	case "activate":
 		var a struct {
 			Key string `json:"key"`

@@ -12,10 +12,29 @@ var serverURLFile string
 
 func serverURL() string { return parseServerURL(serverURLFile) }
 
+// keyServerURL is where keys are activated and checked (a "keys: https://..." line in server-url.txt).
+// Without that line, keys use the main server.
+func keyServerURL() string {
+	if k := parseKeyServerURL(serverURLFile); k != "" {
+		return k
+	}
+	return serverURL()
+}
+
+func parseKeyServerURL(text string) string {
+	for _, ln := range strings.Split(text, "\n") {
+		ln = strings.TrimSpace(ln)
+		if strings.HasPrefix(strings.ToLower(ln), "keys:") {
+			return parseServerURL(strings.TrimSpace(ln[5:]))
+		}
+	}
+	return ""
+}
+
 func parseServerURL(text string) string {
 	for _, ln := range strings.Split(text, "\n") {
 		ln = strings.TrimSpace(ln)
-		if ln == "" || strings.HasPrefix(ln, "#") {
+		if ln == "" || strings.HasPrefix(ln, "#") || strings.HasPrefix(strings.ToLower(ln), "keys:") {
 			continue
 		}
 		if strings.HasPrefix(ln, "https://") && !strings.ContainsAny(ln, " <>\"'") {

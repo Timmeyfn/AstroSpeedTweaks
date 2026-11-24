@@ -1,3 +1,4 @@
-# Your AstroSpeed server (the Cloudflare worker running astrospeed-server.js).
-# Keys, updates, live tweaks and the shop all come from here. Blank = everything free, no updates.
+# Your website worker: shop, downloads, updates and live tweaks.
 https://astrospeed.dupelication.workers.dev
+# Your key hoster: where keys are activated and checked.
+keys: https://rapid-forest-bfb5.dupelication.workers.dev
