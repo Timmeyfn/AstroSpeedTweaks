@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net/http"
@@ -104,6 +105,11 @@ func downloadUpdate() (interface{}, error) {
 		_ = os.Remove(dest)
 		return nil, errors.New("the downloaded file doesn't look right, so it was discarded")
 	}
+	// the new exe carries its own version; refuse anything that isn't exactly the version offered
+	if b, err := os.ReadFile(dest); err != nil || !bytes.Contains(b, []byte("ASTROSPEED_VERSION="+info.Latest+";")) {
+		_ = os.Remove(dest)
+		return nil, errors.New("the downloaded file isn't version " + info.Latest + ", so it wasn't installed. Try again in a minute")
+	}
 
 	updateReady = dest
 	logf("Update downloaded: %s (%.1f MB)", filepath.Base(dest), float64(fi.Size())/(1<<20))
@@ -134,6 +140,7 @@ func applyUpdate() (interface{}, error) {
 		return nil, errors.New("couldn't install the new version")
 	}
 	logf("Update applied, relaunching")
+	markCleanExit() // a planned restart, not a crash
 	if instanceMutex != 0 {
 		windows.CloseHandle(instanceMutex) // let the new copy start
 		instanceMutex = 0

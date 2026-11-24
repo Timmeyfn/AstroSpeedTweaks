@@ -128,7 +128,8 @@ tr:last-child td{border-bottom:0}
     <section id="tab-sales" class="hide">
       <div class="stats" id="saleStats"></div>
       <div class="tbl"><table><thead><tr><th>Date</th><th>Email</th><th>Paid</th><th>Key</th></tr></thead><tbody id="saleRows"></tbody></table></div>
-      <p class="muted small" style="margin-top:12px">Every Stripe payment makes a key automatically. If a buyer lost theirs, find their email here and send them the key.</p>
+      <div class="bar" style="margin-top:14px"><button class="g" id="syncSales" type="button">Find missing orders</button><span class="muted small" id="syncStatus">Checks your last 100 Stripe payments and makes a key for any that don't have one (e.g. the buyer closed the tab straight after paying).</span></div>
+      <p class="muted small" style="margin-top:6px">Every Stripe payment makes a key automatically. If a buyer lost theirs, find their email here and send them the key. Refunds and chargebacks disable the key automatically when the Stripe webhook is set up.</p>
     </section>
 
     <section id="tab-release" class="hide">
@@ -247,9 +248,9 @@ tr:last-child td{border-bottom:0}
     if (!h) return;
     var items = [
       [h.storage ? "ok" : "bad", h.storage ? "Storage connected" : "Storage NOT connected (add the LICENSES binding)"],
-      [h.passwordStrong ? "ok" : (h.password ? "bad" : "bad"), h.passwordStrong ? "Password set" : (h.password ? "Password too short (needs 10+ characters)" : "No ADMIN_PASS set")],
+      [h.passwordStrong ? "ok" : (h.password ? "bad" : "bad"), h.passwordStrong ? "Password set" : (h.password ? "Password too short (needs " + (h.minPassword || 12) + "+ characters)" : "No ADMIN_PASS set")],
       [h.stripe ? (h.stripeTest ? "warn" : "ok") : "warn", h.stripe ? (h.stripeTest ? "Stripe in TEST mode" : "Stripe connected") : "Payments off (no STRIPE_SECRET_KEY)"],
-      [h.webhook ? "ok" : "", h.webhook ? "Stripe backup webhook on" : "Stripe webhook (optional)"]
+      [h.webhook ? "ok" : (h.stripe ? "warn" : ""), h.webhook ? "Stripe webhook on" : "Stripe webhook not set (recommended)"]
     ];
     $("checks").innerHTML = items.map(function (i) { return '<div class="chk ' + i[0] + '"><i></i>' + esc(i[1]) + "</div>"; }).join("");
   }
@@ -361,6 +362,13 @@ tr:last-child td{border-bottom:0}
       }).join("") : '<tr><td colspan="4" class="empty">No sales yet.</td></tr>';
     }).catch(function (e) { $("saleRows").innerHTML = '<tr><td colspan="4" class="empty">' + esc(e.message) + "</td></tr>"; });
   }
+  $("syncSales").addEventListener("click", function () {
+    var b = $("syncSales"); b.disabled = true; $("syncStatus").textContent = "Checking Stripe…";
+    api("syncSales").then(function (d) {
+      $("syncStatus").textContent = d.made ? ("Found " + d.made + " order(s) without a key and made them. They're in the list now.") : ("All " + d.checked + " recent paid orders already have keys.");
+      return Promise.all([loadSales(), loadKeys()]);
+    }).catch(function (err) { $("syncStatus").textContent = err.message; }).then(function () { b.disabled = false; });
+  });
   $("saleRows").addEventListener("click", function (e) { var b = e.target.closest("[data-cp]"); if (b) copy(b.getAttribute("data-cp")); });
 
   // ── release ──

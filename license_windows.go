@@ -142,6 +142,13 @@ func setLicense(st licenseStatus) (changed bool) {
 // loadLicense runs at startup, before the window opens. It never touches the network.
 func loadLicense() { setLicense(evaluate(readLicense())) }
 
+// isProUnlocked is the thread-safe way for the tweak engine to ask.
+func isProUnlocked() bool {
+	licMu.Lock()
+	defer licMu.Unlock()
+	return proUnlocked
+}
+
 func licenseStatusNow() licenseStatus {
 	licMu.Lock()
 	defer licMu.Unlock()
@@ -190,7 +197,7 @@ func refreshLicenseOnline() {
 			writeLicense(lf)
 			st = evaluate(lf)
 			logf("Key check: %s", reason)
-		} else {
+		} else if reason != "not_activated" {
 			st.Offline = st.Activated
 		}
 	}

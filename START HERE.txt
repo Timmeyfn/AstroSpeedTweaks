@@ -20,8 +20,10 @@ PART 1 — Put the new server in (10 minutes, once)
 3. Settings > Variables and Secrets > Add
       Type:   Secret        (not "Text", so nobody can read it)
       Name:   ADMIN_PASS
-      Value:  a password of AT LEAST 10 characters. "1234" will be refused,
-              because anyone who guesses it could make free keys.
+      Value:  a password of AT LEAST 12 characters (longer and random is best).
+              "1234" will be refused. Whoever knows this password can make free
+              keys AND publish an update to every customer, so guard it like a bank
+              password and never share it.
    Deploy.
 
 4. Open  https://astrospeed.dupelication.workers.dev/admin  and sign in.
@@ -53,13 +55,16 @@ PART 2 — Take payments with Stripe (try it free first)
    to Live, copy the LIVE secret key (sk_live_...), and replace STRIPE_SECRET_KEY
    with it. Done — real sales, money goes to your Stripe balance.
 
-Optional backup (recommended once you're live): if a buyer closes the tab straight
-after paying, this makes sure their key is still saved in admin > Sales.
+Strongly recommended once you're live — the webhook. It makes sure a buyer's key is
+saved even if they close the tab straight after paying, and it automatically disables
+the key if you refund someone or they do a chargeback.
    Stripe > Developers > Webhooks > Add endpoint
       URL:     https://astrospeed.dupelication.workers.dev/stripe-webhook
-      Event:   checkout.session.completed
+      Events:  checkout.session.completed, charge.refunded, charge.dispute.created
    Then copy its "Signing secret" (whsec_...) and add it to the worker as a Secret
    named  STRIPE_WEBHOOK_SECRET .
+(No webhook yet and someone says they paid but got no key? Admin > Sales >
+ "Find missing orders" checks Stripe and makes any missing keys.)
 
 
 EVERYDAY USE (all in the admin page)
@@ -68,6 +73,7 @@ Keys tab ........ make keys for friends, disable a key, "Reset PC" if someone ge
                   a new computer, search by key or note.
 Sales tab ....... every purchase with the buyer's email and their key. If someone
                   loses their key, find their email here and send it to them.
+                  "Find missing orders" fixes any paid order that has no key.
 Release tab ..... ship an update: pick the new exe > Upload and publish. Everyone
                   gets "Update now" inside the app, with a progress bar.
 Live tweaks ..... add .bat files or a message for everyone. No app update needed.

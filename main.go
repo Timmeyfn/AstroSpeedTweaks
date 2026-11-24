@@ -701,7 +701,7 @@ func runJob(kind string, ids []string, restore bool, label string, profile int) 
 	changes := 0
 	for i, t := range list {
 		emit("progress", map[string]interface{}{"phase": "start", "i": i, "n": total, "id": t.ID, "title": t.Title})
-		if kind == "apply" && isPro(t) && !proUnlocked {
+		if kind == "apply" && isPro(t) && !isProUnlocked() {
 			results = append(results, TweakResult{ID: t.ID, Title: t.Title, Status: "locked", Msg: "Needs a key"})
 			emit("progress", map[string]interface{}{"phase": "done", "i": i + 1, "n": total, "id": t.ID, "title": t.Title, "status": "locked", "msg": "Needs a key"})
 			continue

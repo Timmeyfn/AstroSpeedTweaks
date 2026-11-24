@@ -13,16 +13,17 @@
 //
 //  Worker settings it needs (Settings tab of the worker):
 //    Binding   KV namespace   LICENSES          (where everything is stored)
-//    Variable  ADMIN_PASS     your password     (at least 10 characters)
+//    Secret    ADMIN_PASS     your password     (at least 12 characters, longer is better)
 //    Secret    STRIPE_SECRET_KEY  sk_live_...   (only when you want to take payments)
-//    Secret    STRIPE_WEBHOOK_SECRET whsec_...  (optional backup, see the guide)
+//    Secret    STRIPE_WEBHOOK_SECRET whsec_...  (recommended: saves keys even if a buyer closes the tab,
+//                                               and disables keys for refunds/chargebacks)
 // ════════════════════════════════════════════════════════════════════════════
 
 const SERVER_VERSION = "2.0";
 // Where the app was downloaded from before you upload a version in the admin page.
 const LEGACY_DOWNLOAD = "https://astrospeedtweaks.dupelication.workers.dev/AstroSpeed%20Tweaks.exe";
 const EXE_NAME = "AstroSpeed Tweaks.exe";
-const MIN_PASS = 10;
+const MIN_PASS = 12;
 
 const DEFAULT_SETTINGS = {
   productName: "AstroSpeed Tweaks",
@@ -52,7 +53,7 @@ export default {
         case "/version.json":
           return await versionInfo(env, url);
         case "/download":
-          return await download(env);
+          return await download(env, url);
         case "/activate":
           return await activate(request, env);
         case "/check":
@@ -66,7 +67,7 @@ export default {
         case "/stripe-webhook":
           return await stripeWebhook(request, env);
         case "/admin":
-          return request.method === "GET" ? page(ADMIN_HTML) : await adminApi(request, env);
+          return request.method === "GET" ? adminPage() : await adminApi(request, env, request);
         case "/admin/upload":
           return await adminUpload(request, env, url);
         case "/health":
@@ -74,7 +75,13 @@ export default {
       }
       return new Response("Not found", { status: 404, headers: CORS });
     } catch (e) {
-      return json({ ok: false, reason: "Server error: " + (e && e.message ? e.message : String(e)) }, 500);
+      const msg = e && e.message ? e.message : String(e);
+      console.log("error on " + path + ": " + msg);
+      if (request.method === "GET" && (path === "/thanks" || path === "/buy"))
+        return page(simplePage("Something went wrong", "<p>We couldn't load this page just now. Your payment (if you made one) is safe. Please refresh in a minute" + (path === "/thanks" ? " — this same link will show your key." : ".") + "</p>", url.origin), 500);
+      // only setup problems are spelled out; anything else stays generic
+      const setup = /LICENSES storage/.test(msg);
+      return json({ ok: false, reason: setup ? "Server error: " + msg : "Server error. Please try again." }, 500);
     }
   },
 };
@@ -130,8 +137,38 @@ function health(env) {
     stripe: typeof env.STRIPE_SECRET_KEY === "string" && env.STRIPE_SECRET_KEY.trim().startsWith("sk_"),
     stripeTest: typeof env.STRIPE_SECRET_KEY === "string" && env.STRIPE_SECRET_KEY.trim().startsWith("sk_test_"),
     webhook: typeof env.STRIPE_WEBHOOK_SECRET === "string" && env.STRIPE_WEBHOOK_SECRET.trim().startsWith("whsec_"),
+    minPassword: MIN_PASS,
   };
 }
+// Every key record is also stored as metadata, so the admin list can read it in one go.
+function keyMeta(rec) {
+  return {
+    createdAt: rec.createdAt || 0, activatedAt: rec.activatedAt || 0, hwid: rec.hwid || "", revoked: !!rec.revoked,
+    note: String(rec.note || "").slice(0, 200), source: rec.source || "", sale: rec.sale || "",
+  };
+}
+async function putKey(env, key, rec) {
+  await env.LICENSES.put(key, JSON.stringify(rec), { metadata: keyMeta(rec) });
+}
+function adminPage() {
+  return new Response(ADMIN_HTML, {
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer" },
+  });
+}
+// Slows down password guessing (per Cloudflare server; real protection is a long password).
+const FAILS = new Map();
+function throttled(ip) {
+  const f = FAILS.get(ip);
+  return !!(f && f.n >= 8 && Date.now() - f.t < 15 * 60 * 1000);
+}
+function noteFail(ip) {
+  const f = FAILS.get(ip) || { n: 0, t: Date.now() };
+  if (Date.now() - f.t > 15 * 60 * 1000) { f.n = 0; f.t = Date.now(); }
+  f.n++;
+  FAILS.set(ip, f);
+  if (FAILS.size > 5000) FAILS.clear();
+}
+
 function needStorage(env) {
   if (!env.LICENSES) throw new Error("the LICENSES storage isn't connected to this worker (Settings > Bindings)");
 }
@@ -179,15 +216,21 @@ async function versionInfo(env, url) {
   });
 }
 
-async function download(env) {
+async function download(env, url) {
   const rel = await getRelease(env);
-  if (!rel || !rel.fileKey) return Response.redirect(LEGACY_DOWNLOAD, 302);
-  const obj = await env.LICENSES.getWithMetadata(rel.fileKey, { type: "stream" });
-  if (!obj || !obj.value) return Response.redirect(LEGACY_DOWNLOAD, 302);
+  const want = String(url.searchParams.get("v") || "").replace(/[^0-9.]/g, "");
+  if (!rel && !want) return Response.redirect(LEGACY_DOWNLOAD, 302); // nothing published yet
+  const version = want || rel.version;
+  const obj = await env.LICENSES.getWithMetadata("file:app:" + version, { type: "stream" });
+  if (!obj || !obj.value) {
+    // never hand out a different file than the one asked for: the app would install the wrong version
+    return new Response("This download isn't available right now. Please try again in a minute.", { status: 503, headers: { "Retry-After": "60", ...CORS } });
+  }
   const headers = {
     "Content-Type": "application/octet-stream",
     "Content-Disposition": 'attachment; filename="' + EXE_NAME + '"',
     "Cache-Control": "no-store",
+    "X-AstroSpeed-Version": version,
     ...CORS,
   };
   if (obj.metadata && obj.metadata.size) headers["Content-Length"] = String(obj.metadata.size);
@@ -227,7 +270,7 @@ async function activate(request, env) {
   if (!rec.hwid) {
     rec.hwid = hwid;
     rec.activatedAt = Date.now();
-    await env.LICENSES.put(k, JSON.stringify(rec));
+    await putKey(env, k, rec);
   }
   return json({ ok: true, key: k });
 }
@@ -239,7 +282,8 @@ async function check(request, env) {
   const rec = await env.LICENSES.get(k, "json");
   if (!rec) return json({ ok: false, reason: "invalid" });
   if (rec.revoked) return json({ ok: false, reason: "disabled" });
-  if (rec.hwid !== hwid) return json({ ok: false, reason: rec.hwid ? "other_pc" : "invalid" });
+  if (!rec.hwid) return json({ ok: false, reason: "not_activated" }); // e.g. just reset, or storage still catching up
+  if (rec.hwid !== hwid) return json({ ok: false, reason: "other_pc" });
   return json({ ok: true });
 }
 
@@ -293,26 +337,28 @@ async function saleKey(env, sessionId) {
   return out;
 }
 
+function isOurPaidCheckout(s) {
+  return !!s && s.mode === "payment" && (s.payment_status === "paid" || s.payment_status === "no_payment_required") && s.metadata && s.metadata.product === "astrospeed";
+}
+
 // Creates the key for a paid order once; calling it again returns the same key.
 async function keyForSale(env, session) {
   const existing = await env.LICENSES.get("sale:" + session.id, "json");
   if (existing && existing.key) return existing.key;
   const email = (session.customer_details && session.customer_details.email) || session.customer_email || "";
   const key = await saleKey(env, session.id);
+  const pi = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent && session.payment_intent.id) || "";
+  const sale = { key, email, amount: session.amount_total || 0, currency: session.currency || "", pi, createdAt: Date.now() };
   const already = await env.LICENSES.get(key, "json");
   if (already) {
     // the other path (webhook / thanks page) got here first: just make sure the sale is recorded
-    await env.LICENSES.put("sale:" + session.id, JSON.stringify({ key, email, amount: session.amount_total || 0, currency: session.currency || "", createdAt: already.createdAt || Date.now() }));
+    sale.createdAt = already.createdAt || sale.createdAt;
+    await env.LICENSES.put("sale:" + session.id, JSON.stringify(sale), { metadata: sale });
     return key;
   }
-  await env.LICENSES.put(
-    key,
-    JSON.stringify({ createdAt: Date.now(), hwid: null, revoked: false, note: email || "Stripe sale", source: "stripe", sale: session.id }),
-  );
-  await env.LICENSES.put(
-    "sale:" + session.id,
-    JSON.stringify({ key, email, amount: session.amount_total || 0, currency: session.currency || "", createdAt: Date.now() }),
-  );
+  await putKey(env, key, { createdAt: Date.now(), hwid: null, revoked: false, note: email || "Stripe sale", source: "stripe", sale: session.id });
+  await env.LICENSES.put("sale:" + session.id, JSON.stringify(sale), { metadata: sale });
+  if (pi) await env.LICENSES.put("pi:" + pi, session.id);
   return key;
 }
 
@@ -325,7 +371,9 @@ async function thanks(env, url) {
   if (!key) {
     if (!health(env).stripe) return page(simplePage("Order not found", "<p>Payments aren't set up on this server.</p>", url.origin), 404);
     const session = await stripe(env, "GET", "checkout/sessions/" + encodeURIComponent(id));
-    if (session.payment_status !== "paid") {
+    if (!session || session.mode !== "payment" || !session.metadata || session.metadata.product !== "astrospeed")
+      return page(simplePage("Order not found", "<p>That link isn't an AstroSpeed order.</p>", url.origin), 404);
+    if (!isOurPaidCheckout(session)) {
       return page(
         simplePage(
           "Payment still processing",
@@ -357,11 +405,24 @@ async function stripeWebhook(request, env) {
   const expected = await hmacHex(secret, t + "." + body);
   if (!sigs.includes(expected)) return json({ ok: false, reason: "bad signature" }, 400);
   const event = JSON.parse(body);
+  const obj = event.data && event.data.object;
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
-    const session = event.data && event.data.object;
-    if (session && session.payment_status === "paid") {
+    if (isOurPaidCheckout(obj)) {
       needStorage(env);
-      await keyForSale(env, session);
+      await keyForSale(env, obj);
+    }
+  }
+  if ((event.type === "charge.refunded" && obj && obj.refunded) || event.type === "charge.dispute.created") {
+    const pi = obj && (typeof obj.payment_intent === "string" ? obj.payment_intent : obj.payment_intent && obj.payment_intent.id);
+    const sid = pi && (await env.LICENSES.get("pi:" + pi));
+    const sale = sid && (await env.LICENSES.get("sale:" + sid, "json"));
+    if (sale && sale.key) {
+      const rec = await env.LICENSES.get(sale.key, "json");
+      if (rec && !rec.revoked) {
+        rec.revoked = true;
+        rec.note = (rec.note ? rec.note + " · " : "") + (event.type === "charge.dispute.created" ? "chargeback" : "refunded");
+        await putKey(env, sale.key, rec);
+      }
     }
   }
   return json({ ok: true });
@@ -369,21 +430,29 @@ async function stripeWebhook(request, env) {
 
 // ───────────────────────── admin ─────────────────────────
 
-function passOK(env, given) {
+async function sha256(text) {
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+}
+async function passOK(env, given, request) {
+  const ip = (request && request.headers.get("CF-Connecting-IP")) || "local";
+  if (throttled(ip)) return false;
   const want = typeof env.ADMIN_PASS === "string" ? env.ADMIN_PASS.trim() : "";
-  const got = String(given || "").trim();
-  if (want.length < MIN_PASS || got.length !== want.length) return false;
+  if (want.length < MIN_PASS) return false;
+  const a = await sha256(want), b = await sha256(String(given || "").trim());
   let diff = 0;
-  for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ got.charCodeAt(i);
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  if (diff !== 0) noteFail(ip);
   return diff === 0;
 }
-async function authFail(env) {
+async function authFail(env, request) {
   const h = health(env);
+  const ip = (request && request.headers.get("CF-Connecting-IP")) || "local";
+  if (throttled(ip)) return json({ ok: false, code: "throttled", reason: "Too many wrong passwords. Wait 15 minutes and try again." }, 429);
   if (!h.password)
     return json({ ok: false, code: "nopass", reason: "No ADMIN_PASS is set on this worker yet. Add it under Settings > Variables and Secrets." }, 401);
   if (!h.passwordStrong)
     return json(
-      { ok: false, code: "weak", reason: "Your ADMIN_PASS is too short. Change it to at least " + MIN_PASS + " characters in the worker's Settings, then try again." },
+      { ok: false, code: "weak", reason: "Your ADMIN_PASS is too short. Change it to at least " + MIN_PASS + " characters (a long random one is best) in the worker's Settings, then try again." },
       401,
     );
   await sleep(700); // slows down guessing
@@ -397,11 +466,15 @@ async function listKeys(env) {
     const page = await env.LICENSES.list({ prefix: "ASTRO-", cursor, limit: 1000 });
     for (const it of page.keys) {
       if (!isKeyName(it.name)) continue;
-      const rec = await env.LICENSES.get(it.name, "json");
-      if (rec) rows.push({ key: it.name, ...rec });
+      if (it.metadata && "createdAt" in it.metadata) rows.push({ key: it.name, ...it.metadata });
+      else {
+        // made by an older server version: read it once and add metadata for next time
+        const rec = await env.LICENSES.get(it.name, "json");
+        if (rec) { rows.push({ key: it.name, ...rec }); if (rows.length < 300) await putKey(env, it.name, rec); }
+      }
     }
     cursor = page.list_complete ? null : page.cursor;
-  } while (cursor && rows.length < 5000);
+  } while (cursor && rows.length < 20000);
   rows.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   return rows;
 }
@@ -411,18 +484,34 @@ async function listSales(env) {
   do {
     const page = await env.LICENSES.list({ prefix: "sale:", cursor, limit: 1000 });
     for (const it of page.keys) {
-      const rec = await env.LICENSES.get(it.name, "json");
+      const rec = it.metadata && it.metadata.key ? it.metadata : await env.LICENSES.get(it.name, "json");
       if (rec) rows.push({ id: it.name.slice(5), ...rec });
     }
     cursor = page.list_complete ? null : page.cursor;
-  } while (cursor && rows.length < 5000);
+  } while (cursor && rows.length < 20000);
   rows.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   return rows;
 }
 
+// Finds paid Stripe orders that never got a key (e.g. buyer closed the tab and there's no webhook).
+async function syncSales(env) {
+  if (!health(env).stripe) throw new Error("Stripe isn't connected (no STRIPE_SECRET_KEY).");
+  const list = await stripe(env, "GET", "checkout/sessions?limit=100&status=complete");
+  let made = 0, checked = 0;
+  for (const sess of list.data || []) {
+    if (!isOurPaidCheckout(sess)) continue;
+    checked++;
+    const known = await env.LICENSES.get("sale:" + sess.id, "json");
+    if (known && known.key) continue;
+    await keyForSale(env, sess);
+    made++;
+  }
+  return { made, checked };
+}
+
 async function adminApi(request, env) {
   const body = await request.json().catch(() => ({}));
-  if (!passOK(env, body.pass)) return authFail(env);
+  if (!(await passOK(env, body.pass, request))) return authFail(env, request);
   const h = health(env);
   const action = body.action;
   if (action === "login" || action === "status") {
@@ -436,7 +525,7 @@ async function adminApi(request, env) {
     const made = [];
     for (let i = 0; i < n; i++) {
       const key = newKey();
-      await env.LICENSES.put(key, JSON.stringify({ createdAt: Date.now(), hwid: null, revoked: false, note: String(body.note || "").slice(0, 200), source: "admin" }));
+      await putKey(env, key, { createdAt: Date.now(), hwid: null, revoked: false, note: String(body.note || "").slice(0, 200), source: "admin" });
       made.push(key);
     }
     return json({ ok: true, made });
@@ -455,7 +544,7 @@ async function adminApi(request, env) {
       rec.hwid = null;
       rec.activatedAt = null;
     }
-    await env.LICENSES.put(k, JSON.stringify(rec));
+    await putKey(env, k, rec);
     return json({ ok: true });
   }
   if (action === "note") {
@@ -463,10 +552,11 @@ async function adminApi(request, env) {
     const rec = await env.LICENSES.get(k, "json");
     if (!rec) return json({ ok: false, reason: "That key doesn't exist." });
     rec.note = String(body.note || "").slice(0, 200);
-    await env.LICENSES.put(k, JSON.stringify(rec));
+    await putKey(env, k, rec);
     return json({ ok: true });
   }
   if (action === "sales") return json({ ok: true, rows: await listSales(env) });
+  if (action === "syncSales") return json({ ok: true, ...(await syncSales(env)) });
 
   if (action === "saveSettings") {
     const cur = await getSettings(env);
@@ -494,11 +584,12 @@ async function adminApi(request, env) {
       return json({ ok: false, code: "not_newer", reason: "Version " + version + " isn't higher than the live " + live.version + ", so nobody would get it." });
     const rel = { version, notes: String(body.notes || "").slice(0, 4000), fileKey, size: meta.size || 0, publishedAt: Date.now() };
     await env.LICENSES.put("cfg:release", JSON.stringify(rel));
-    // tidy away older uploads so storage doesn't fill up (keep the live one and this one)
+    // tidy up: keep this version and the one that was live until now; delete anything older
+    const keep = new Set([version, live && live.version].filter(Boolean));
     const old = await env.LICENSES.list({ prefix: "file:app:" });
-    for (const it of old.keys) if (it.name !== fileKey) await env.LICENSES.delete(it.name);
+    for (const it of old.keys) if (!keep.has(it.name.slice(9))) await env.LICENSES.delete(it.name);
     const oldMeta = await env.LICENSES.list({ prefix: "filemeta:app:" });
-    for (const it of oldMeta.keys) if (it.name !== "filemeta:app:" + version) await env.LICENSES.delete(it.name);
+    for (const it of oldMeta.keys) if (!keep.has(it.name.slice(13))) await env.LICENSES.delete(it.name);
     return json({ ok: true, release: rel });
   }
 
@@ -513,12 +604,14 @@ async function adminApi(request, env) {
       const clean = String(name).replace(/[^A-Za-z0-9 _.\-]/g, "").slice(0, 60);
       if (!clean) continue;
       const fn = /\.(bat|cmd)$/i.test(clean) ? clean : clean + ".bat";
-      const t = String(text || "").slice(0, 256 * 1024);
-      total += t.length;
+      const t = String(text || "");
+      const bytes = new TextEncoder().encode(t).length;
+      if (bytes > 200 * 1024) return json({ ok: false, reason: clean + " is bigger than 200 KB." });
+      total += bytes;
       bats[fn] = t;
     }
     if (Object.keys(bats).length > 30) return json({ ok: false, reason: "That's more than 30 .bat files." });
-    if (total > 4 * 1024 * 1024) return json({ ok: false, reason: "Those .bat files are too big in total." });
+    if (total > 2 * 1024 * 1024) return json({ ok: false, reason: "Those .bat files are too big in total (2 MB max)." });
     const pack = { message: String(p.message || "").slice(0, 400), json: String(p.json || "").slice(0, 512 * 1024), bats, savedAt: Date.now() };
     await env.LICENSES.put("cfg:pack", JSON.stringify(pack));
     return json({ ok: true, pack });
@@ -529,18 +622,18 @@ async function adminApi(request, env) {
 
 async function adminUpload(request, env, url) {
   if (request.method !== "POST") return json({ ok: false, reason: "POST only" }, 405);
-  if (!passOK(env, request.headers.get("X-Admin-Pass"))) return authFail(env);
+  if (!(await passOK(env, request.headers.get("X-Admin-Pass"), request))) return authFail(env, request);
   needStorage(env);
   const version = String(url.searchParams.get("version") || "").trim().replace(/^v/i, "");
   if (!/^\d+(\.\d+){1,3}$/.test(version)) return json({ ok: false, reason: "Version must look like 1.9.0" });
-  const buf = await request.arrayBuffer();
-  if (buf.byteLength < 1024 * 1024) return json({ ok: false, reason: "That file is too small to be the app." });
-  if (buf.byteLength > 24 * 1024 * 1024) return json({ ok: false, reason: "That file is over 24 MB, which is too big to store." });
-  const head = new Uint8Array(buf, 0, 2);
-  if (head[0] !== 0x4d || head[1] !== 0x5a) return json({ ok: false, reason: "That isn't a Windows .exe file." });
-  await env.LICENSES.put("file:app:" + version, buf, { metadata: { size: buf.byteLength, uploadedAt: Date.now() } });
-  await env.LICENSES.put("filemeta:app:" + version, JSON.stringify({ size: buf.byteLength, uploadedAt: Date.now() }));
-  return json({ ok: true, size: buf.byteLength });
+  const size = Number(request.headers.get("Content-Length") || 0);
+  if (!size || size < 1024 * 1024) return json({ ok: false, reason: "That file is too small to be the app." });
+  if (size > 24 * 1024 * 1024) return json({ ok: false, reason: "That file is over 24 MB, which is too big to store." });
+  // streamed straight into storage; the admin page already checked it's an .exe, and the app checks
+  // the version written inside the file before installing it
+  await env.LICENSES.put("file:app:" + version, request.body, { metadata: { size, uploadedAt: Date.now() } });
+  await env.LICENSES.put("filemeta:app:" + version, JSON.stringify({ size, uploadedAt: Date.now() }));
+  return json({ ok: true, size });
 }
 
 function simplePage(title, bodyHtml, origin) {
