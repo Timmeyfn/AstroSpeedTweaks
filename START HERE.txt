@@ -1,4 +1,4 @@
-AstroSpeed — START HERE
+Astro Tweaks — START HERE
 =======================
 
 You run TWO Cloudflare workers. Both use the same LICENSES storage.
@@ -9,7 +9,7 @@ You run TWO Cloudflare workers. Both use the same LICENSES storage.
 
   rapid-forest-bfb5  https://rapid-forest-bfb5.dupelication.workers.dev
                      Key hoster ONLY: the app activates and checks keys here.
-                     Its home page just says "AstroSpeed key server is running."
+                     Its home page just says "Astro Tweaks key server is running."
                      Paste in:  KEY HOSTER - rapid-forest-bfb5.js
 
 Both workers need the LICENSES KV binding and the ADMIN_PASS secret (steps 2 and 3 below).
@@ -40,7 +40,7 @@ PART 1 — Put the new server in (10 minutes, once)
 4. Open  https://astrospeed.dupelication.workers.dev/admin  and sign in.
    The coloured dots at the top tell you what's set up and what isn't.
 
-5. Release tab > pick  AstroSpeed Tweaks.exe  (from the 1.9.0 zip).
+5. Release tab > pick  Astro Tweaks.exe  (from the 1.9.0 zip).
    The version fills in by itself. Type what's new > Upload and publish.
    From now on the website's Download button gives out this file.
 

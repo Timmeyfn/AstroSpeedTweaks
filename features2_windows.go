@@ -4,7 +4,7 @@ package main
 
 import "time"
 
-// Weekly auto-clean: once AstroSpeed has been open and it's been 7 days, it clears the usual
+// Weekly auto-clean: once Astro Tweaks has been open and it's been 7 days, it clears the usual
 // temp files and caches by itself. The Recycle Bin is never emptied automatically.
 func autoCleanOnStart() {
 	defer func() { _ = recover() }()

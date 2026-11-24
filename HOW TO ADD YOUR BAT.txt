@@ -1,17 +1,17 @@
-AstroSpeed - add your own .bat tweaks
+Astro Tweaks - add your own .bat tweaks
 =====================================
 
 ONE-TIME SETUP
 1. Install Go:      https://go.dev/dl
 2. Install Python:  https://www.python.org/downloads
    (tick "Add python.exe to PATH" during setup)
-3. Unzip AstroSpeed-Tweaks-source.zip.
+3. Unzip Astro Tweaks-Tweaks-source.zip.
 4. Unzip this kit into that same folder. If Windows asks to replace files, say Yes.
 
 EVERY TIME YOU WANT TO ADD OR CHANGE A .BAT
 1. Put the .bat file in the "custom" folder.
 2. Double-click build.bat.
-3. Your new "AstroSpeed Tweaks.exe" appears in the folder.
+3. Your new "Astro Tweaks.exe" appears in the folder.
 
 The first build takes a few minutes while Go downloads what it needs.
 After that it takes under a minute.

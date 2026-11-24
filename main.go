@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "2.1.0"
+const AppVersion = "2.2.0"
 
 // versionMarker lets the admin page read the version straight out of an uploaded exe.
 const versionMarker = "ASTROSPEED_VERSION=" + AppVersion + ";"
@@ -64,7 +64,7 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			logf("CRASH: %v\n%s", r, debug.Stack())
-			messageBox("AstroSpeed Tweaks", fmt.Sprintf("AstroSpeed hit an unexpected error and needs to close.\n\n%v\n\nYour backups are safe in %s", r, dataDir), 0x10)
+			messageBox("Astro Tweaks", fmt.Sprintf("Astro Tweaks hit an unexpected error and needs to close.\n\n%v\n\nYour backups are safe in %s", r, dataDir), 0x10)
 		}
 	}()
 
@@ -91,7 +91,7 @@ func main() {
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
-		title, _ := windows.UTF16PtrFromString("AstroSpeed Tweaks")
+		title, _ := windows.UTF16PtrFromString("Astro Tweaks")
 		if w, _, _ := procFindWindow.Call(0, uintptr(unsafe.Pointer(title))); w != 0 {
 			procShowWindow.Call(w, 9) // SW_RESTORE
 			procSetForeground.Call(w)
@@ -107,7 +107,7 @@ func main() {
 	setupCrashLog()
 	defer markCleanExit()
 	loadState()
-	logf("AstroSpeed Tweaks %s started (admin: %v)", AppVersion, isElevated())
+	logf("Astro Tweaks %s started (admin: %v)", AppVersion, isElevated())
 
 	curEnv = detectEnv()
 	curEnv.Games = map[string]string{}
@@ -150,7 +150,7 @@ func main() {
 		AutoFocus: true,
 		DataPath:  profileDir,
 		WindowOptions: webview2.WindowOptions{
-			Title:  "AstroSpeed Tweaks",
+			Title:  "Astro Tweaks",
 			Width:  1920,
 			Height: 1080,
 			IconId: 1,
@@ -158,7 +158,7 @@ func main() {
 		},
 	})
 	if wv == nil {
-		if messageBox("AstroSpeed Tweaks", "AstroSpeed needs the Microsoft Edge WebView2 Runtime, which is missing on this PC.\n\nClick OK to open Microsoft's download page, install the Evergreen Runtime, then open AstroSpeed again.", 0x31) == 1 {
+		if messageBox("Astro Tweaks", "Astro Tweaks needs the Microsoft Edge WebView2 Runtime, which is missing on this PC.\n\nClick OK to open Microsoft's download page, install the Evergreen Runtime, then open Astro Tweaks again.", 0x31) == 1 {
 			_ = shellOpen("https://go.microsoft.com/fwlink/p/?LinkId=2124703")
 		}
 		return
@@ -186,7 +186,7 @@ func main() {
 	wv.SetHtml(indexHTML)
 	wv.Run()
 	setTimer(false)
-	logf("AstroSpeed closed")
+	logf("Astro Tweaks closed")
 }
 
 var lastCrash string
@@ -317,7 +317,7 @@ func parseArgs(args json.RawMessage, v interface{}) error {
 
 func handle(method string, args json.RawMessage) (interface{}, error) {
 	if paidTool(method, args) && !isProUnlocked() {
-		return nil, fmt.Errorf("this needs an AstroSpeed key")
+		return nil, fmt.Errorf("this needs an Astro Tweaks key")
 	}
 	switch method {
 	case "init":
@@ -390,7 +390,7 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 			return nil, fmt.Errorf("another job is still running")
 		}
 		defer jobMu.Unlock()
-		err := createRestorePoint("AstroSpeed Tweaks - manual restore point")
+		err := createRestorePoint("Astro Tweaks - manual restore point")
 		return map[string]bool{"ok": err == nil}, err
 
 	case "shopInfo":
@@ -715,7 +715,7 @@ func runJob(kind string, ids []string, restore bool, label string, profile int) 
 	results := []TweakResult{}
 	if restore && kind == "apply" {
 		emit("progress", map[string]interface{}{"phase": "restore", "i": 0, "n": total, "title": "Creating a System Restore point"})
-		if err := createRestorePoint(firstNonEmpty(label, "AstroSpeed Tweaks - before optimize")); err != nil {
+		if err := createRestorePoint(firstNonEmpty(label, "Astro Tweaks - before optimize")); err != nil {
 			emit("progress", map[string]interface{}{"phase": "restore-failed", "i": 0, "n": total, "title": "Restore point couldn't be created", "msg": firstLine(err.Error())})
 		} else {
 			emit("progress", map[string]interface{}{"phase": "restore-ok", "i": 0, "n": total, "title": "Restore point created"})

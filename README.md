@@ -1,4 +1,4 @@
-# AstroSpeed Tweaks
+# Astro Tweaks
 
 **New here? Read `START HERE.txt`.** One Cloudflare worker (`server/astrospeed-server.js`) runs the website, Stripe payments, keys, downloads, updates and live tweaks; you manage it all at `/admin`.
 
@@ -10,7 +10,7 @@ Every copy reads live tweaks (.bat files and an optional astrospeed.json) from y
 
 ## Running it
 
-Double-click `AstroSpeed Tweaks.exe` and accept the administrator prompt. It needs the Microsoft Edge WebView2 Runtime, which Windows 10 and 11 already include on nearly every PC.
+Double-click `Astro Tweaks.exe` and accept the administrator prompt. It needs the Microsoft Edge WebView2 Runtime, which Windows 10 and 11 already include on nearly every PC.
 
 Because the exe isn't code-signed, Windows SmartScreen may say "Windows protected your PC". Click **More info → Run anyway**.
 
@@ -20,10 +20,10 @@ Mouse sensitivity, pointer speed, Enhance pointer precision, DPI, mouse/keyboard
 
 ## Safety
 
-* Every change is backed up to `C:\ProgramData\AstroSpeed\state.json` before it's made, and Undo restores the exact previous value.
+* Every change is backed up to `C:\ProgramData\Astro Tweaks\state.json` before it's made, and Undo restores the exact previous value.
 * Optimize offers to create a System Restore point first.
 * Security trade-offs (CPU mitigations, Memory Integrity, VBS) and appearance changes are manual-only and never applied by Optimize.
-* The app launches no other programs at startup and never uses encoded PowerShell commands. If it ever closes unexpectedly, the next launch shows what happened (logs in `C:\ProgramData\AstroSpeed\logs`).
+* The app launches no other programs at startup and never uses encoded PowerShell commands. If it ever closes unexpectedly, the next launch shows what happened (logs in `C:\ProgramData\Astro Tweaks\logs`).
 * If BitLocker is on, it is paused for one restart before any boot-setting change, so you won't be asked for a recovery key.
 
 ## Building from source
@@ -33,7 +33,7 @@ Requires Go 1.24+ and Python 3.
 ```
 python3 build_ui.py                       # inlines ui/src + fonts into ui/dist/index.html
 go-winres make --in winres/winres.json    # icon, admin manifest, version info
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o "AstroSpeed Tweaks.exe" .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o "Astro Tweaks.exe" .
 go test .                                 # catalog safety rules (set SG_PWSH=pwsh to also parse every PowerShell script)
 ```
 

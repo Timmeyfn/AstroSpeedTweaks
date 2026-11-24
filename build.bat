@@ -1,9 +1,9 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title AstroSpeed builder
+title Astro Tweaks builder
 echo.
-echo  AstroSpeed builder
+echo  Astro Tweaks builder
 echo  -------------------
 echo.
 
@@ -46,21 +46,21 @@ echo [4/5] Adding the icon and admin prompt...
 "%WINRES%" make --in winres\winres.json --out rsrc || goto fail
 if exist rsrc_windows_386.syso del rsrc_windows_386.syso
 
-echo [5/5] Building AstroSpeed Tweaks.exe...
-go build -trimpath -ldflags "-H windowsgui -s -w" -o "AstroSpeed Tweaks.exe" . || goto fail
+echo [5/5] Building Astro Tweaks.exe...
+go build -trimpath -ldflags "-H windowsgui -s -w" -o "Astro Tweaks.exe" . || goto fail
 
 echo.
-echo  Done! Your new app is "AstroSpeed Tweaks.exe" in this folder.
+echo  Done! Your new app is "Astro Tweaks.exe" in this folder.
 echo  Your .bat tweaks are in the app under "Your tweaks".
 echo.
-explorer /select,"%~dp0AstroSpeed Tweaks.exe"
+explorer /select,"%~dp0Astro Tweaks.exe"
 pause
 exit /b 0
 
 :testfail
 type "%TEMP%\astrospeed-check.txt"
 echo.
-echo  A tweak broke one of AstroSpeed's rules - see the lines above.
+echo  A tweak broke one of Astro Tweaks' rules - see the lines above.
 echo  Lines that start with bat- are from your .bat files.
 echo  Remove that line from your .bat file, then run build.bat again.
 goto end

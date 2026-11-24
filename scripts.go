@@ -1,6 +1,6 @@
 package main
 
-// Every PowerShell script AstroSpeed runs is built here, in platform-neutral code,
+// Every PowerShell script Astro Tweaks runs is built here, in platform-neutral code,
 // so scripts_test.go can syntax-check all of them with the real PowerShell parser.
 
 import (
@@ -171,7 +171,7 @@ func allScriptsForTest() map[string]string {
 		"dnsGet":       psDNSGet(),
 		"dnsSet":       psDNSSet([]string{"1.1.1.1", "1.0.0.1"}),
 		"dnsAuto":      psDNSSet(nil),
-		"restorePoint": psRestorePoint("AstroSpeed Tweaks - before optimize"),
+		"restorePoint": psRestorePoint("Astro Tweaks - before optimize"),
 	}
 	for _, t := range Catalog {
 		for i, a := range t.Actions {

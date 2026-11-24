@@ -1,6 +1,6 @@
 package main
 
-// Online packs: extra tweaks, sections and games that AstroSpeed downloads from your GitHub
+// Online packs: extra tweaks, sections and games that Astro Tweaks downloads from your GitHub
 // repository, so you can add things without rebuilding the app.
 //
 //   astrospeed.json       sections, tweaks, games, game pictures and an optional message
@@ -56,7 +56,7 @@ type PackResult struct {
 
 // ───────────────────────── safety rules ─────────────────────────
 
-// Areas AstroSpeed promises never to touch (shared with catalog_test.go).
+// Areas Astro Tweaks promises never to touch (shared with catalog_test.go).
 var protectedAreas = []string{
 	`control panel\mouse`, `control panel\keyboard`, `control panel\cursors`,
 	`mouclass`, `kbdclass`, `mousesensitivity`, `mousespeed`, `mousethreshold`, `smoothmouse`, `enhance pointer`,
@@ -78,7 +78,7 @@ func protectedReason(a Action) string {
 	blob := actionBlob(a)
 	for _, f := range protectedAreas {
 		if strings.Contains(blob, f) {
-			return "touches " + f + ", which AstroSpeed promises never to change"
+			return "touches " + f + ", which Astro Tweaks promises never to change"
 		}
 	}
 	return ""

@@ -5,7 +5,7 @@ import "encoding/json"
 // Free vs paid.
 //
 // Free: the dashboard, the PC Checkup scan, the ping test, Undo (always), and the few sample
-// tweaks below so people can see AstroSpeed working. Everything else needs a key.
+// tweaks below so people can see Astro Tweaks working. Everything else needs a key.
 // To change what's free, edit freeTweaks.
 var freeTweaks = map[string]bool{
 	"gamemode":   true, // Turn on Game Mode

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// Things AstroSpeed promises never to change.
+// Things Astro Tweaks promises never to change.
 var forbidden = []string{
 	`control panel\mouse`,    // pointer speed, acceleration, double-click
 	`control panel\keyboard`, // repeat rate/delay

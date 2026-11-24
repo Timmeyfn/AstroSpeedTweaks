@@ -10,7 +10,7 @@ window.__sg = {
     const p = pending.get(id);
     if (!p) return;
     pending.delete(id);
-    if (payload && payload.error !== undefined) { if (/needs an AstroSpeed key/i.test(payload.error) && typeof showUpgrade === 'function') setTimeout(() => showUpgrade(), 0); p.reject(new Error(payload.error)); }
+    if (payload && payload.error !== undefined) { if (/needs an Astro Tweaks key/i.test(payload.error) && typeof showUpgrade === 'function') setTimeout(() => showUpgrade(), 0); p.reject(new Error(payload.error)); }
     else p.resolve(payload ? payload.ok : null);
   },
   event(name, data) { (listeners[name] || []).slice().forEach(f => f(data)); }
@@ -126,8 +126,8 @@ const toolPages = [
 ];
 const safetyPages = [
   { id: 'settings', title: 'Settings', icon: 'gear', sub: 'Appearance, updates, the boost hotkey and starting with Windows.' },
-  { id: 'safety', title: 'Restore & undo', icon: 'shield', sub: 'Every change AstroSpeed makes is backed up first. Undo one tweak, a section, or everything.' },
-  { id: 'about', title: 'About', icon: 'info', sub: 'What AstroSpeed changes, what it never touches, and where your backups live.' }
+  { id: 'safety', title: 'Restore & undo', icon: 'shield', sub: 'Every change Astro Tweaks makes is backed up first. Undo one tweak, a section, or everything.' },
+  { id: 'about', title: 'About', icon: 'info', sub: 'What Astro Tweaks changes, what it never touches, and where your backups live.' }
 ];
 
 // ───────────────────────── navigation ─────────────────────────
@@ -185,7 +185,7 @@ function render() {
   const v = $('#view');
   v.classList.remove('enter');
   let title = '', sub = '';
-  if (S.page === 'dashboard') { title = 'Dashboard'; sub = 'Your PC at a glance, and how much of AstroSpeed is switched on.'; v.innerHTML = viewDashboard(); }
+  if (S.page === 'dashboard') { title = 'Dashboard'; sub = 'Your PC at a glance, and how much of Astro Tweaks is switched on.'; v.innerHTML = viewDashboard(); }
   else if (S.page.startsWith('cat:')) {
     const c = S.data.categories.find(x => x.id === S.page.slice(4));
     title = c.title; sub = c.subtitle; v.innerHTML = viewCategory(c);
@@ -215,8 +215,8 @@ function render() {
 
 function renderBanners() {
   let h = '';
-  if (!S.data.admin) h += `<div class="banner warn">${ico('warn')}<span>AstroSpeed isn't running as administrator, so most tweaks can't be applied. Close it, then right-click it and choose <b>Run as administrator</b>.</span></div>`;
-  if (S.data.lastCrash && !S.crashSeen) h += `<div class="banner crash">${ico('info')}<span>AstroSpeed didn't close properly last time. Your settings and backups are safe.</span><button class="btn sm ghost" data-act="crashDetails" type="button">Details</button><button class="btn sm quiet" data-act="crashDismiss" type="button" style="margin-left:0">Dismiss</button></div>`;
+  if (!S.data.admin) h += `<div class="banner warn">${ico('warn')}<span>Astro Tweaks isn't running as administrator, so most tweaks can't be applied. Close it, then right-click it and choose <b>Run as administrator</b>.</span></div>`;
+  if (S.data.lastCrash && !S.crashSeen) h += `<div class="banner crash">${ico('info')}<span>Astro Tweaks didn't close properly last time. Your settings and backups are safe.</span><button class="btn sm ghost" data-act="crashDetails" type="button">Details</button><button class="btn sm quiet" data-act="crashDismiss" type="button" style="margin-left:0">Dismiss</button></div>`;
   const pk = S.data.pack || {};
   if (pk.message && prefGet('sg-msg-seen') !== pk.message) h += `<div class="banner news">${ico('spark')}<span>${esc(pk.message)}</span><button class="btn sm quiet" data-act="msgDismiss" type="button" style="margin-left:auto">Dismiss</button></div>`;
   if (S.reboot) h += `<div class="banner reboot">${ico('reboot')}<span>Restart your PC to finish applying some changes.</span><button class="btn sm primary" data-act="restart" type="button">Restart now</button></div>`;
@@ -241,7 +241,7 @@ function viewDashboard() {
   const full = pct >= 98;
   const ps = paidStats();
   const freeUser = !proUnlocked() && ps.locked > 0;
-  if (freeUser) line = `${ps.locked} of the ${ps.total} speed fixes AstroSpeed found for this PC are locked. The free version can only switch on ${ps.free}.`;
+  if (freeUser) line = `${ps.locked} of the ${ps.total} speed fixes Astro Tweaks found for this PC are locked. The free version can only switch on ${ps.free}.`;
   else if (full) line = 'Everything in Recommended and Competitive is switched on. Manual-only extras are waiting in each section if you want them.';
   else line = pct >= 60
     ? `${plural(pendComp, 'tweak')} in the Competitive profile ${pendComp === 1 ? 'is' : 'are'} still off. Optimize switches them on after making a restore point.`
@@ -289,7 +289,7 @@ function viewDashboard() {
     <div class="panel spot"><div class="panel-h"><h2>This PC</h2><button class="btn sm quiet" data-act="reprobe" type="button">${ico('reboot')}Rescan</button></div><div class="panel-b">${specList()}</div></div>
     <div class="panel spot"><div class="panel-h"><h2>Health checks</h2></div><div class="panel-b"><div class="checks">${healthChecks()}</div></div></div>
     <div class="panel spot"><div class="panel-h"><h2>Never changed</h2></div><div class="panel-b protect">
-      <p class="muted small" style="margin:0 0 8px">No tweak in AstroSpeed touches any of these:</p>
+      <p class="muted small" style="margin:0 0 8px">No tweak in Astro Tweaks touches any of these:</p>
       <ul>${['Mouse sensitivity, pointer speed and “Enhance pointer precision”', 'Mouse DPI, polling rate and your mouse software', 'Game settings, keybinds, crosshair and replays', 'Epic Games Launcher settings', 'Screen resolution, refresh rate and scaling', 'Keyboard repeat rate and layout', 'Windows Defender, Firewall, UAC and Windows Update']
         .map(x => `<li>${ico('lock')}<span>${esc(x)}</span></li>`).join('')}</ul>
     </div></div>
@@ -307,7 +307,7 @@ function kinetic(text, from = 0) {
 }
 
 function gliderSVG() {
-  return `<svg viewBox="0 0 84 28"><defs><linearGradient id="ctail" x1="0" x2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity="0"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".85"/></linearGradient><radialGradient id="chead" cx=".4" cy=".4" r=".6"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#FFD9C2"/><stop offset="1" stop-color="var(--accent)"/></radialGradient></defs><path d="M2 14 L70 6.5 L70 21.5 Z" fill="url(#ctail)"/><circle cx="70" cy="14" r="13" fill="var(--accent)" opacity=".18"/><circle cx="70" cy="14" r="7.5" fill="url(#chead)"/></svg>`;
+  return `<svg viewBox="0 0 84 28"><defs><linearGradient id="ctail" x1="0" x2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity="0"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".85"/></linearGradient><radialGradient id="chead" cx=".4" cy=".4" r=".6"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#E9DDFF"/><stop offset="1" stop-color="var(--accent)"/></radialGradient></defs><path d="M2 14 L70 6.5 L70 21.5 Z" fill="url(#ctail)"/><circle cx="70" cy="14" r="13" fill="var(--accent)" opacity=".18"/><circle cx="70" cy="14" r="7.5" fill="url(#chead)"/></svg>`;
 }
 
 const easeOut = t => 1 - Math.pow(1 - t, 4);
@@ -516,7 +516,7 @@ function healthChecks() {
     return { ok: ok ? 'ok' : 'warn', name, small: ok ? onText : offText, btn: ok ? '' : `<button class="btn sm ghost" data-act="apply1" data-id="${id}" type="button">Fix</button>` };
   };
   const list = [
-    tw('power-plan', 'Power plan', 'Windows can clock your CPU down mid-game', 'AstroSpeed Performance is active'),
+    tw('power-plan', 'Power plan', 'Windows can clock your CPU down mid-game', 'Astro Tweaks Performance is active'),
     tw('gamedvr', 'Background recording', 'Game DVR is recording in the background', 'Turned off'),
     tw('fn-gpupref', 'Fortnite GPU', 'Windows decides which GPU Fortnite uses', 'Always your high-performance GPU'),
     tw('nic-power', 'Network adapter power saving', 'Your network card can nap between packets', 'Turned off'),
@@ -536,7 +536,7 @@ function healthChecks() {
     }),
     ...(S.drives || []).filter(d => d.freeGB / d.sizeGB < 0.1).map(d => ({ ok: 'warn', name: `Drive ${d.letter} almost full`, small: `${d.freeGB.toFixed(1)} GB free. Games can stutter when the drive is nearly full`, btn: `<button class="btn sm ghost" data-nav="cleaner" type="button">Clean up</button>` })),
     rp ? { ok: 'ok', name: 'Restore point', small: 'Last created ' + fmtDate(rp.when) }
-      : { ok: 'warn', name: 'Restore point', small: 'None created by AstroSpeed yet', btn: `<button class="btn sm ghost" data-act="restorepoint" type="button">Create</button>` }
+      : { ok: 'warn', name: 'Restore point', small: 'None created by Astro Tweaks yet', btn: `<button class="btn sm ghost" data-act="restorepoint" type="button">Create</button>` }
   ].filter(Boolean);
   return list.map(c => `<div class="check">${ico(c.ok === 'ok' ? 'ok' : 'warn', 'ico-' + c.ok)}<div class="t">${esc(c.name)}<small>${esc(c.small)}</small></div><div>${c.btn || ''}</div></div>`).join('');
 }
@@ -603,7 +603,7 @@ function checkupItems() {
   if (c.memLoad) add({ w: 1, ok: c.memLoad < 80, name: 'Memory in use', small: `${c.memLoad}% of your RAM is in use right now`, fix: c.memLoad >= 80 ? `<button class="btn sm ghost" data-nav="booster" type="button">Free memory</button>` : '' });
   if (c.uptimeHours) { const days = c.uptimeHours / 24; add({ w: 1, ok: days < 3, name: 'Time since restart', small: days >= 1 ? `${days.toFixed(days < 10 ? 1 : 0)} days. ` + (days >= 3 ? 'A restart clears leaked memory and stuck drivers' : 'Fine') : `${Math.max(1, Math.round(c.uptimeHours))} hours`, fix: days >= 3 ? `<button class="btn sm ghost" data-act="restart" type="button">Restart</button>` : '' }); }
   const pend = pendingFor(2).length, lk = lockedFor(2).length;
-  add({ w: 3, ok: pend === 0 && lk === 0, name: 'AstroSpeed tweaks', small: pend + lk ? `${plural(pend + lk, 'speed fix', 'speed fixes')} for this PC ${pend + lk === 1 ? 'is' : 'are'} still off${lk ? ` (${lk} need a key)` : ''}` : 'Everything in Competitive is on', fix: pend ? `<button class="btn sm ghost" data-act="optimize" type="button">Optimize</button>` : lk ? `<button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Unlock</button>` : '' });
+  add({ w: 3, ok: pend === 0 && lk === 0, name: 'Astro Tweaks tweaks', small: pend + lk ? `${plural(pend + lk, 'speed fix', 'speed fixes')} for this PC ${pend + lk === 1 ? 'is' : 'are'} still off${lk ? ` (${lk} need a key)` : ''}` : 'Everything in Competitive is on', fix: pend ? `<button class="btn sm ghost" data-act="optimize" type="button">Optimize</button>` : lk ? `<button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Unlock</button>` : '' });
   return out;
 }
 function scoreOf(items) {
@@ -624,7 +624,7 @@ function viewCheckup() {
   const tone = score >= 90 ? 'ok' : score >= 55 ? 'mid' : 'low';
   return `
   <div class="panel spot score-panel tone-${tone}">
-    <div class="score-ring"><svg viewBox="0 0 200 200"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="#FFB37A"/></linearGradient></defs>
+    <div class="score-ring"><svg viewBox="0 0 200 200"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="#C4A7FF"/></linearGradient></defs>
       <circle class="trk" cx="100" cy="100" r="${R}"/><circle class="val" cx="100" cy="100" r="${R}" style="stroke-dasharray:${C};stroke-dashoffset:${C * (1 - score / 100)};--from:${C}"/></svg>
       <div class="score-mid"><b data-score="${score}">${score}</b><span>out of 100</span></div></div>
     <div class="score-copy">
@@ -734,19 +734,19 @@ function viewSettings() {
     </div></div>
     <div class="panel spot"><div class="panel-h"><h2>Updates</h2>${d.updateConfigured ? `<button class="btn sm quiet" data-act="checkUpdate" type="button"${S.checking ? ' disabled' : ''}>${ico('reboot')}Check now</button>` : ''}</div><div class="panel-b">
       ${upd}
-      ${d.updateConfigured ? setRow('autoUpdate', 'Check for updates automatically', 'Lets you know when a new version of AstroSpeed is ready.', d.autoUpdate) : ''}
+      ${d.updateConfigured ? setRow('autoUpdate', 'Check for updates automatically', 'Lets you know when a new version of Astro Tweaks is ready.', d.autoUpdate) : ''}
     </div></div>
     ${packPanel(d)}
     <div class="panel spot"><div class="panel-h"><h2>Boosting</h2></div><div class="panel-b">
       ${setRow('hotkey', 'Boost hotkey: Ctrl + Alt + B', 'Press it any time, even in a game, to clear memory, tighten the timer, flush DNS and raise the running game to high priority. You hear a short sound when it’s done.', d.hotkey)}
-      ${setRow('autoboost', 'Boost automatically when a game starts', 'While AstroSpeed is open, any supported game is boosted the moment it launches.', d.autoBoost)}
-      ${setRow('memGuard', 'Keep memory clear while you play', 'If your RAM gets nearly full during a game, AstroSpeed clears Windows’ standby memory (at most every 5 minutes) so the game isn’t starved.', d.memGuard, paidTag())}
+      ${setRow('autoboost', 'Boost automatically when a game starts', 'While Astro Tweaks is open, any supported game is boosted the moment it launches.', d.autoBoost)}
+      ${setRow('memGuard', 'Keep memory clear while you play', 'If your RAM gets nearly full during a game, Astro Tweaks clears Windows’ standby memory (at most every 5 minutes) so the game isn’t starved.', d.memGuard, paidTag())}
     </div></div>
     <div class="panel spot"><div class="panel-h"><h2>Maintenance</h2></div><div class="panel-b">
-      ${setRow('autoClean', 'Clean up automatically every week', 'Clears temp files and caches once a week while AstroSpeed is open. The Recycle Bin is never emptied automatically.', d.autoClean, paidTag() + (d.lastAutoClean && fmtDate(d.lastAutoClean) ? `<span class="dim small" style="display:block;margin-top:4px">Last run ${esc(fmtDate(d.lastAutoClean))}</span>` : ''))}
+      ${setRow('autoClean', 'Clean up automatically every week', 'Clears temp files and caches once a week while Astro Tweaks is open. The Recycle Bin is never emptied automatically.', d.autoClean, paidTag() + (d.lastAutoClean && fmtDate(d.lastAutoClean) ? `<span class="dim small" style="display:block;margin-top:4px">Last run ${esc(fmtDate(d.lastAutoClean))}</span>` : ''))}
     </div></div>
     <div class="panel spot"><div class="panel-h"><h2>Startup</h2></div><div class="panel-b">
-      ${setRow('startup', 'Start with Windows', 'Opens AstroSpeed minimised when you sign in, so the hotkey and auto-boost are always ready. No admin prompt each time.', S.startupOn)}
+      ${setRow('startup', 'Start with Windows', 'Opens Astro Tweaks minimised when you sign in, so the hotkey and auto-boost are always ready. No admin prompt each time.', S.startupOn)}
       <div class="actions"><button class="btn sm ghost" data-open="logs" type="button">${ico('log')}Open logs and backups</button></div>
     </div></div>
     ${defaultBatPanel(d)}
@@ -758,9 +758,9 @@ function defaultBatPanel(d) {
   const b = d.defaultBat || {};
   if (!b.available) return '';
   const s = st('default-bat');
-  const state = !b.on ? 'Off. Nothing from it is applied.' : s === 'on' || s === 'native' ? 'On and applied.' : 'On. It’s applied each time AstroSpeed opens.';
+  const state = !b.on ? 'Off. Nothing from it is applied.' : s === 'on' || s === 'native' ? 'On and applied.' : 'On. It’s applied each time Astro Tweaks opens.';
   return `<div class="panel spot default-bat"><div class="panel-h"><h2>Default tweaks</h2></div><div class="panel-b">
-      ${setRow('defaultBat', b.title || 'AstroSpeed default tweaks', `${esc(b.desc || '')} Runs every time AstroSpeed opens. Turning it off undoes it.`, b.on, `<span class="dim small" style="display:block;margin-top:4px">${esc(state)}</span>`)}
+      ${setRow('defaultBat', b.title || 'Astro Tweaks default tweaks', `${esc(b.desc || '')} Runs every time Astro Tweaks opens. Turning it off undoes it.`, b.on, `<span class="dim small" style="display:block;margin-top:4px">${esc(state)}</span>`)}
     </div></div>`;
 }
 
@@ -831,7 +831,7 @@ function showUpgrade() {
   const price = shop.priceShort || shop.priceLabel || '';
   const title = l.activated && l.trial ? 'Keep everything after your trial' : `Unlock all ${ps.total} speed fixes`;
   openModal(`
-    <div class="dialog-h up-h"><div><div class="eyebrow">${ico('lock')}AstroSpeed full version</div><h2>${esc(title)}</h2><p>${ps.locked ? `Your PC is <b>${ps.pct}% optimized</b>. <b>${ps.locked}</b> of the fixes AstroSpeed found for it are locked on the free version.` : 'One key unlocks every tweak and tool in AstroSpeed.'}</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
+    <div class="dialog-h up-h"><div><div class="eyebrow">${ico('lock')}Astro Tweaks full version</div><h2>${esc(title)}</h2><p>${ps.locked ? `Your PC is <b>${ps.pct}% optimized</b>. <b>${ps.locked}</b> of the fixes Astro Tweaks found for it are locked on the free version.` : 'One key unlocks every tweak and tool in Astro Tweaks.'}</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
     <div class="dialog-b">
       <div class="up-grid">
         <div class="up-col"><h4>Free</h4><ul>${['Dashboard & PC Checkup scan', 'Ping test', `${plural(ps.free, 'free tweak')}`, 'Undo & restore'].map(x => `<li>${ico('check', 'ico-ok')}${x}</li>`).join('')}</ul></div>
@@ -867,7 +867,7 @@ async function doActivate() {
     if (r && r.activated) {
       closeModal();
       S.data.license = r;
-      toast('Unlocked! Thanks for supporting AstroSpeed.', 'ok', 5000);
+      toast('Unlocked! Thanks for supporting Astro Tweaks.', 'ok', 5000);
       await reloadCatalog(); // the real names and details of the paid tweaks arrive now
     } else { err.textContent = (r && r.error) || 'That key didn\'t work.'; }
   } catch (e) { err.textContent = e.message || 'Couldn\'t reach the server.'; }
@@ -892,7 +892,7 @@ function showUpdate() {
   const u = S.update;
   if (!u || !u.available) return;
   openModal(`
-    <div class="dialog-h"><div class="upd-mark">${ico('arrow')}</div><div><h2>AstroSpeed ${esc(u.latest)} is ready</h2><p>You have version ${esc(u.current)}. Your tweaks, backups and settings carry over.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
+    <div class="dialog-h"><div class="upd-mark">${ico('arrow')}</div><div><h2>Astro Tweaks ${esc(u.latest)} is ready</h2><p>You have version ${esc(u.current)}. Your tweaks, backups and settings carry over.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
     <div class="dialog-b"><div class="upd-notes">${u.title && u.title !== u.latest && u.title !== 'v' + u.latest ? `<h3>${esc(u.title)}</h3>` : ''}${notesHTML(u.notes)}</div>
       <div class="upd-prog" id="updProg" hidden><div class="upd-bar"><i id="updBarFill"></i></div><div class="upd-prog-txt" id="updProgTxt">Starting…</div></div></div>
     <div class="dialog-f" id="updFoot"><button class="btn quiet" data-act="skipUpdate" type="button">Skip this version</button><span class="spacer"></span><button class="btn ghost" data-close type="button">Later</button><button class="btn primary" data-act="installUpdate" data-autofocus type="button">${ico('arrow', 'down')}Update now</button></div>`, true);
@@ -910,7 +910,7 @@ async function runUpdate() {
   if (updating) return; updating = true;
   const foot = $('#updFoot'), prog = $('#updProg');
   const m = $('#modal'); if (m) m.dataset.locked = '1';
-  if (foot) foot.innerHTML = `<span class="muted small">Keep AstroSpeed open while it updates…</span>`;
+  if (foot) foot.innerHTML = `<span class="muted small">Keep Astro Tweaks open while it updates…</span>`;
   if (prog) prog.hidden = false;
   try {
     await api('downloadUpdate');
@@ -928,7 +928,7 @@ async function runUpdate() {
 function showWhatsNew(u) {
   if (!$('#modal').hidden) return;
   openModal(`
-    <div class="dialog-h"><div><div class="eyebrow">Updated</div><h2>You're on AstroSpeed ${esc(u.latest)}</h2><p>Here's what changed in this version.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
+    <div class="dialog-h"><div><div class="eyebrow">Updated</div><h2>You're on Astro Tweaks ${esc(u.latest)}</h2><p>Here's what changed in this version.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
     <div class="dialog-b">${notesHTML(u.notes)}</div>
     <div class="dialog-f"><span class="spacer"></span><button class="btn primary" data-close data-autofocus type="button">Got it</button></div>`, true);
 }
@@ -1063,7 +1063,7 @@ function gameIntro(id) {
       </div>
     </div></div>
     <div class="panel spot"><div class="panel-h"><h2>Your game settings stay yours</h2></div><div class="panel-b">
-      <p class="muted" style="margin:0">These tweaks change how Windows treats ${esc(g.name)}: its priority, which GPU it uses and how its packets are tagged. AstroSpeed never opens the game's settings, so your sensitivity, keybinds, graphics settings and crosshair are exactly as you left them.</p>
+      <p class="muted" style="margin:0">These tweaks change how Windows treats ${esc(g.name)}: its priority, which GPU it uses and how its packets are tagged. Astro Tweaks never opens the game's settings, so your sensitivity, keybinds, graphics settings and crosshair are exactly as you left them.</p>
       ${g.note ? `<p class="note-line">${ico('info')}<span>${esc(g.note)}</span></p>` : ''}
     </div></div></div>`;
 }
@@ -1112,7 +1112,7 @@ function yourGamesHTML() {
   const found = gamesFound();
   const body = found.length
     ? `<div class="ygames">${found.slice(0, 8).map(g => { const c = gameCatOf(g.id); const l = c ? catTweaks(c.id) : []; return `<button class="yg" data-nav="cat:${c ? c.id : ''}" type="button">${gameTile(g, 52)}<span>${esc(g.name)}</span><small>${appliedCount(l)}/${l.length} on</small></button>`; }).join('')}</div>`
-    : `<p class="muted" style="margin:6px 0 0">No supported games found yet. AstroSpeed looks in Steam, Epic, Riot, Battle.net, EA and Roblox folders.</p>`;
+    : `<p class="muted" style="margin:6px 0 0">No supported games found yet. Astro Tweaks looks in Steam, Epic, Riot, Battle.net, EA and Roblox folders.</p>`;
   return `<div class="panel spot"><div class="panel-h"><h2>Your games</h2><button class="btn sm quiet" data-nav="games" type="button">All games${ico('arrow', 'arr')}</button></div><div class="panel-b">${body}</div></div>`;
 }
 
@@ -1268,12 +1268,12 @@ function categoryIntro(id) {
       <div class="panel spot"><div class="panel-h"><h2>Detected on this PC</h2></div><div class="panel-b">
         <dl class="kv"><dt>Memory speed</dt><dd>${xmp}</dd><dt>Firmware</dt><dd>${esc(e.firmware || 'Unknown')}${e.bios ? `<span class="dim small"> · BIOS ${esc(e.bios)}</span>` : ''}</dd>
         <dt>Secure Boot</dt><dd>${sb}</dd><dt>Memory Integrity</dt><dd>${hv}</dd><dt>BitLocker</dt><dd>${bl}</dd></dl>
-        <p class="dim small" style="margin:14px 0 0">Boot timer tweaks below edit Windows' boot settings. If BitLocker is on, AstroSpeed pauses it for one restart first so you won't be asked for a recovery key.</p>
+        <p class="dim small" style="margin:14px 0 0">Boot timer tweaks below edit Windows' boot settings. If BitLocker is on, Astro Tweaks pauses it for one restart first so you won't be asked for a recovery key.</p>
       </div></div></div>`;
   }
   if (id === 'input') {
     return `<div class="intro"><div class="panel spot"><div class="panel-h"><h2>Your aim stays exactly the same</h2></div><div class="panel-b">
-      <p class="muted" style="margin:0">This section only keeps USB ports and devices awake and stops the Sticky Keys pop-up. Sensitivity, pointer speed, “Enhance pointer precision”, DPI, polling rate and mouse/keyboard driver buffers are never changed by any tweak in AstroSpeed.</p>
+      <p class="muted" style="margin:0">This section only keeps USB ports and devices awake and stops the Sticky Keys pop-up. Sensitivity, pointer speed, “Enhance pointer precision”, DPI, polling rate and mouse/keyboard driver buffers are never changed by any tweak in Astro Tweaks.</p>
     </div></div></div>`;
   }
   return '';
@@ -1292,12 +1292,12 @@ function viewSearch() {
 
 // ───────────────────────── tools ─────────────────────────
 // Booster, cleaner and startup manager need a key. The scan still runs, so the lock shows
-// what AstroSpeed actually found on this PC.
+// what Astro Tweaks actually found on this PC.
 function toolTeaser(page) {
   if (page === 'cleaner') {
     if (!S.clean) return 'Scanning for junk files…';
     const tot = S.clean.reduce((a, b) => a + (b.bytes || 0), 0);
-    return tot > 0 ? `AstroSpeed found <b>${fmtBytes(tot)}</b> of temp files and caches on this PC.` : 'Clear temp files, caches and leftovers in one click.';
+    return tot > 0 ? `Astro Tweaks found <b>${fmtBytes(tot)}</b> of temp files and caches on this PC.` : 'Clear temp files, caches and leftovers in one click.';
   }
   if (page === 'booster') {
     const b = S.booster, apps = S.bgApps || [];
@@ -1322,7 +1322,7 @@ function toolPaywall(page, inner) {
       <div class="eyebrow">Paid feature</div>
       <h2>${esc(paidToolPages[page])} needs a key</h2>
       <p class="pw-fact">${toolTeaser(page)}</p>
-      <p class="muted small">Unlock it, plus every tweak in AstroSpeed, with one key.</p>
+      <p class="muted small">Unlock it, plus every tweak in Astro Tweaks, with one key.</p>
       <div class="actions" style="justify-content:center"><button class="btn primary lg" data-act="upgrade" type="button">${ico('lock')}Unlock the full version</button></div>
     </div>
   </div>`;
@@ -1337,7 +1337,7 @@ function viewBooster() {
     <div class="panel tool spot">
       <h3>Timer resolution</h3>
       <div class="big">${b ? b.timerCur.toFixed(2) : '–'}<small>ms now</small></div>
-      <p class="muted small grow" style="margin:0">Holds Windows' timer at ${b ? b.timerMax.toFixed(1) : '0.5'} ms while AstroSpeed is open, for tighter frame pacing. Released when you close the app.</p>
+      <p class="muted small grow" style="margin:0">Holds Windows' timer at ${b ? b.timerMax.toFixed(1) : '0.5'} ms while Astro Tweaks is open, for tighter frame pacing. Released when you close the app.</p>
       <div style="display:flex;align-items:center;gap:12px"><button class="switch" role="switch" aria-checked="${b && b.timerHeld}" data-act="timer" type="button" aria-label="Hold timer resolution"></button><span>${b && b.timerHeld ? 'Holding' : 'Off'}</span></div>
     </div>
     <div class="panel tool spot">
@@ -1356,7 +1356,7 @@ function viewBooster() {
   </div>
   <div class="panel spot autoboost" style="margin-bottom:20px"><div class="panel-b ab-row">
     <button class="switch" role="switch" aria-checked="${!!S.data.autoBoost}" data-act="autoboost" type="button" aria-label="Boost automatically when a game starts"></button>
-    <div><div class="ab-t">Boost automatically when a game starts</div><div class="muted small">While AstroSpeed is open, it watches for any supported game. When one starts, it clears standby memory, tightens the timer and raises the game to high priority. Nothing is closed.</div></div>
+    <div><div class="ab-t">Boost automatically when a game starts</div><div class="muted small">While Astro Tweaks is open, it watches for any supported game. When one starts, it clears standby memory, tightens the timer and raises the game to high priority. Nothing is closed.</div></div>
   </div></div>
   <div class="panel spot">
     <div class="panel-h"><h2>Background apps</h2><button class="btn sm quiet" data-act="bgrefresh" type="button">${ico('reboot')}Refresh</button></div>
@@ -1450,12 +1450,12 @@ function viewSafety() {
   return `
   <div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
     <div class="panel spot"><div class="panel-h"><h2>Undo everything</h2></div><div class="panel-b">
-      <p class="muted" style="margin:0 0 6px">AstroSpeed saved the exact value of every setting before changing it. Undoing puts each one back, newest first.</p>
-      <p style="margin:0 0 16px"><b>${applied}</b> <span class="muted">${applied === 1 ? 'tweak is' : 'tweaks are'} currently applied by AstroSpeed.</span></p>
-      <button class="btn danger" data-act="undoAll" type="button"${applied ? '' : ' disabled'}>${ico('undo')}Undo all AstroSpeed changes</button>
+      <p class="muted" style="margin:0 0 6px">Astro Tweaks saved the exact value of every setting before changing it. Undoing puts each one back, newest first.</p>
+      <p style="margin:0 0 16px"><b>${applied}</b> <span class="muted">${applied === 1 ? 'tweak is' : 'tweaks are'} currently applied by Astro Tweaks.</span></p>
+      <button class="btn danger" data-act="undoAll" type="button"${applied ? '' : ' disabled'}>${ico('undo')}Undo all Astro Tweaks changes</button>
     </div></div>
     <div class="panel spot"><div class="panel-h"><h2>System Restore</h2></div><div class="panel-b">
-      ${rps.length ? `<div class="list">${rps.slice(0, 5).map(r => `<div class="li" style="grid-template-columns:auto 1fr auto">${ico(r.ok ? 'ok' : 'bad', r.ok ? 'ico-ok' : 'ico-bad')}<div>${esc(r.label)}</div><div class="s">${esc(fmtDate(r.when))}</div></div>`).join('')}</div>` : '<p class="muted" style="margin:0">No restore points created by AstroSpeed yet.</p>'}
+      ${rps.length ? `<div class="list">${rps.slice(0, 5).map(r => `<div class="li" style="grid-template-columns:auto 1fr auto">${ico(r.ok ? 'ok' : 'bad', r.ok ? 'ico-ok' : 'ico-bad')}<div>${esc(r.label)}</div><div class="s">${esc(fmtDate(r.when))}</div></div>`).join('')}</div>` : '<p class="muted" style="margin:0">No restore points created by Astro Tweaks yet.</p>'}
       <div class="actions"><button class="btn sm ghost" data-act="restorepoint" type="button">${ico('shield')}Create restore point</button><button class="btn sm quiet" data-open="restore" type="button">${ico('ext')}Open System Restore</button></div>
     </div></div>
   </div>
@@ -1468,7 +1468,7 @@ function viewAbout() {
   const rec = T().filter(t => t.profile === 1).length, comp = T().filter(t => t.profile === 2).length, man = T().filter(t => t.profile === 0).length;
   return `
   <div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
-    <div class="panel spot"><div class="panel-h"><h2>How AstroSpeed works</h2></div><div class="panel-b">
+    <div class="panel spot"><div class="panel-h"><h2>How Astro Tweaks works</h2></div><div class="panel-b">
       <ol class="steps">
         <li>Every tweak reads the current value first and saves it to a backup file before changing anything.</li>
         <li><b>Recommended</b> (${rec} tweaks) is safe on any PC. <b>Competitive</b> adds ${comp} more that trade a little power use or convenience for latency. ${man} tweaks are <b>manual only</b> because they reduce security or change how Windows looks.</li>
@@ -1481,7 +1481,7 @@ function viewAbout() {
       <dl class="kv"><dt>Version</dt><dd>${esc(S.data.version)}</dd><dt>Tweaks</dt><dd>${S.data.tweakCount} (${S.data.actionCount} individual changes before per-device expansion)</dd>
       <dt>Backups and logs</dt><dd>${esc(S.data.dataDir || 'C:\\ProgramData\\AstroSpeed')}</dd>
       <dt>Results</dt><dd class="muted">Gains depend on your hardware. Older and lower-end PCs usually see the biggest difference.</dd></dl>
-      <p class="dim small" style="margin:16px 0 0">Fonts: Unbounded and Instrument Sans, SIL Open Font License. AstroSpeed is not affiliated with or endorsed by Epic Games.</p>
+      <p class="dim small" style="margin:16px 0 0">Fonts: Unbounded and Instrument Sans, SIL Open Font License. Astro Tweaks is not affiliated with or endorsed by Epic Games.</p>
       <div class="actions"><button class="btn sm quiet" data-open="logs" type="button">${ico('ext')}Open data folder</button></div>
     </div></div>
   </div>`;
@@ -1587,7 +1587,7 @@ function runJob(kind, args, title, intro) {
   openModal(`
     <div class="dialog-h"><div><h2>${esc(title)}</h2><p id="jobNow">${esc(intro)}</p></div></div>
     <div class="dialog-b"><div class="progress"><i id="jobBar"></i></div><div class="flight" id="flight"></div></div>
-    <div class="dialog-f" id="jobFoot"><span class="muted small">Keep AstroSpeed open until this finishes.</span></div>`);
+    <div class="dialog-f" id="jobFoot"><span class="muted small">Keep Astro Tweaks open until this finishes.</span></div>`);
   const flight = $('#flight');
   const icon = s => s === 'ok' || s === 'reverted' ? ico('ok', 'ico-ok') : s === 'already' ? ico('ok', 'ico-na') : s === 'partial' ? ico('warn', 'ico-warn') : s === 'failed' ? ico('bad', 'ico-bad') : s === 'locked' ? ico('lock', 'ico-warn') : ico('dash', 'ico-na');
   const word = { ok: 'Applied', reverted: 'Undone', already: 'Already set', skipped: 'Not on this PC', partial: 'Partly applied', failed: 'Failed', nothing: 'Nothing to undo', locked: 'Needs a key' };
@@ -1652,14 +1652,14 @@ async function refreshStates() {
 
 async function undoAll() {
   const n = T().filter(t => st(t.id) === 'on' || st(t.id) === 'reset').length;
-  if (!n) { toast('AstroSpeed has nothing applied right now.', 'info'); return; }
-  if (await confirmBox('Undo everything?', `This puts back the original value of every setting AstroSpeed changed (${plural(n, 'tweak')}), newest first. Restart afterwards to finish.`, 'Undo everything', true)) runJob('revertAll', {}, 'Undoing all changes', 'Starting…');
+  if (!n) { toast('Astro Tweaks has nothing applied right now.', 'info'); return; }
+  if (await confirmBox('Undo everything?', `This puts back the original value of every setting Astro Tweaks changed (${plural(n, 'tweak')}), newest first. Restart afterwards to finish.`, 'Undo everything', true)) runJob('revertAll', {}, 'Undoing all changes', 'Starting…');
 }
 
 async function toggleTweak(id) {
   const t = byId(id), s = st(id);
   if (locked(t)) { showUpgrade(); return; }
-  if (s === 'native') { toast('Windows already had this set before AstroSpeed, so there is nothing to undo.', 'info'); return; }
+  if (s === 'native') { toast('Windows already had this set before Astro Tweaks, so there is nothing to undo.', 'info'); return; }
   const turningOn = !(s === 'on');
   if (turningOn && t.risk === 'expert') {
     const ok = await confirmBox(t.title, esc(t.note || 'This is an expert tweak.') + '<br><br>You can undo it at any time.', 'Apply anyway', true);
@@ -1728,7 +1728,7 @@ document.addEventListener('click', async e => {
       try {
         await api('setSetting', { key, on: !cur });
         if (key === 'startup') S.startupOn = !cur; else S.data[key] = !cur;
-        toast({ startup: !cur ? 'AstroSpeed will start with Windows.' : 'AstroSpeed won’t start with Windows.', hotkey: !cur ? 'Hotkey on. Press Ctrl + Alt + B to boost.' : 'Hotkey off.', autoUpdate: !cur ? 'AstroSpeed will check for updates when it opens.' : 'Automatic update checks are off.', autoClean: !cur ? 'AstroSpeed will clean up once a week.' : 'Weekly clean-up is off.', memGuard: !cur ? 'Memory guard is on while you play.' : 'Memory guard is off.' }[key], 'ok');
+        toast({ startup: !cur ? 'Astro Tweaks will start with Windows.' : 'Astro Tweaks won’t start with Windows.', hotkey: !cur ? 'Hotkey on. Press Ctrl + Alt + B to boost.' : 'Hotkey off.', autoUpdate: !cur ? 'Astro Tweaks will check for updates when it opens.' : 'Automatic update checks are off.', autoClean: !cur ? 'Astro Tweaks will clean up once a week.' : 'Weekly clean-up is off.', memGuard: !cur ? 'Memory guard is on while you play.' : 'Memory guard is off.' }[key], 'ok');
       } catch (err) { toast(err.message, 'err', 7000); }
       rerenderView(); break;
     }
@@ -1746,7 +1746,7 @@ document.addEventListener('click', async e => {
       const restore = $('#optRestore').checked;
       if (!ids.length && !restore) { closeModal(); toast('Everything in this profile is already on.', 'info'); return; }
       api('setProfile', { profile: profileChoice }).catch(() => {});
-      runJob('apply', { ids, restore, profile: profileChoice, label: 'AstroSpeed Tweaks - before optimize' }, 'Optimizing', 'Starting…');
+      runJob('apply', { ids, restore, profile: profileChoice, label: 'Astro Tweaks - before optimize' }, 'Optimizing', 'Starting…');
       break;
     }
     case 'apply1': S.busy.add(id); rerenderView(); try { await api('apply', { ids: [id] }); toast('Applied: ' + byId(id).title, 'ok'); } catch (err) { toast(err.message, 'err'); } S.busy.delete(id); refreshStates(); break;
@@ -1867,7 +1867,7 @@ async function enforceTrialEnd() {
     S.data.license = await api('trialReverted');
     renderNav(); rerenderView();
     toast(ids.length ? `Your trial has ended. ${plural(ids.length, 'paid tweak')} ${ids.length === 1 ? 'was' : 'were'} undone. Buy a key to get them back.` : 'Your trial has ended.', 'info', 9000);
-  } catch (e) { toast(e.message || 'Couldn\'t undo the trial tweaks. They will be undone next time AstroSpeed opens.', 'err', 9000); }
+  } catch (e) { toast(e.message || 'Couldn\'t undo the trial tweaks. They will be undone next time Astro Tweaks opens.', 'err', 9000); }
   trialEnding = false;
 }
 on('packUpdated', info => { const had = (S.data && S.data.pack) || {}; reloadCatalog(info).then(() => { if (info.tweaks > (had.tweaks || 0) || info.games > (had.games || 0)) toast('New live tweaks just arrived.', 'ok', 5000); }); });
@@ -1889,7 +1889,7 @@ $('#motionBtn').addEventListener('click', () => { applyMotion(document.documentE
     api('gameIcons').then(ic => { S.icons = ic || {}; if (S.page === 'games' || S.page === 'dashboard' || isGameCat(S.page)) rerenderView(); }).catch(() => {});
     api('ready').catch(() => {});
   } catch (e) {
-    $('#view').innerHTML = `<div class="empty"><h3>AstroSpeed couldn't start</h3><p>${esc(e.message)}</p></div>`;
+    $('#view').innerHTML = `<div class="empty"><h3>Astro Tweaks couldn't start</h3><p>${esc(e.message)}</p></div>`;
   }
   const wait = motionOK() ? Math.max(0, 1900 - (performance.now() - t0)) : 0;
   setTimeout(() => {

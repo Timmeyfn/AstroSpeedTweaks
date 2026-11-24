@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// The default .bat: built into the exe, free for everyone, applied every time AstroSpeed opens,
+// The default .bat: built into the exe, free for everyone, applied every time Astro Tweaks opens,
 // and shown as a switch at the bottom of Settings so people can turn it off.
 // To change it, replace defaults/default.bat and run build.bat.
 //
@@ -23,11 +23,11 @@ func defaultBatTweak() (Tweak, []string, bool) {
 	t.ID = defaultBatID
 	t.Cat = "default" // not a section in the menu: it lives in Settings
 	t.Group = "Default"
-	t.Title = "AstroSpeed default tweaks"
+	t.Title = "Astro Tweaks default tweaks"
 	if strings.TrimSpace(t.Desc) == "" {
-		t.Desc = "Built into AstroSpeed and applied each time it opens."
+		t.Desc = "Built into Astro Tweaks and applied each time it opens."
 	}
-	t.Benefit = "Runs every time AstroSpeed opens. Turning it off undoes it."
+	t.Benefit = "Runs every time Astro Tweaks opens. Turning it off undoes it."
 	t.Profile = 0 // never part of Optimize; it has its own switch
 	t.Online = false
 	return t, skipped, true

@@ -20,7 +20,7 @@ import (
 
 // The online pack lives in the same GitHub repository as the updates (update-repo.txt):
 //   astrospeed.json   and/or   tweaks/*.bat
-// It is downloaded at start and every 30 minutes, checked, cached in ProgramData\AstroSpeed
+// It is downloaded at start and every 30 minutes, checked, cached in ProgramData\Astro Tweaks
 // and merged into the catalog. If GitHub can't be reached, the last good copy is used.
 
 type packCache struct {

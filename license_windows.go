@@ -145,7 +145,7 @@ func evaluate(lf licenseFile) licenseStatus {
 	case time.Since(time.Unix(lf.LastOK, 0)) < offlineGrace:
 		st.Activated = true
 	default:
-		st.Problem = "AstroSpeed needs to go online to confirm your key."
+		st.Problem = "Astro Tweaks needs to go online to confirm your key."
 	}
 	st.NeedsRevert = trialNeedsRevert(st)
 	return st

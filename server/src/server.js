@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════════════
-//  AstroSpeed server — ONE file for everything. Paste this whole file into your
+//  Astro Tweaks server — ONE file for everything. Paste this whole file into your
 //  Cloudflare worker and press Deploy. You never need to edit it.
 //
 //  It runs:
@@ -25,11 +25,11 @@ const ROLE = "all";
 const KEY_ROUTES = new Set(["/activate", "/check", "/health", "/admin", "/admin/upload"]);
 // Where the app was downloaded from before you upload a version in the admin page.
 const LEGACY_DOWNLOAD = "https://astrospeedtweaks.dupelication.workers.dev/AstroSpeed%20Tweaks.exe";
-const EXE_NAME = "AstroSpeed Tweaks.exe";
+const EXE_NAME = "Astro Tweaks.exe";
 const MIN_PASS = 12;
 
 const DEFAULT_SETTINGS = {
-  productName: "AstroSpeed Tweaks",
+  productName: "Astro Tweaks",
   price: 500, // in cents: 500 = $5.00
   currency: "aud",
   supportEmail: "",
@@ -47,7 +47,7 @@ export default {
     const path = url.pathname.replace(/\/+$/, "") || "/";
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (ROLE === "keys" && !KEY_ROUTES.has(path))
-      return new Response("AstroSpeed key server is running.", { headers: { "Content-Type": "text/plain; charset=utf-8", ...CORS } });
+      return new Response("Astro Tweaks key server is running.", { headers: { "Content-Type": "text/plain; charset=utf-8", ...CORS } });
     try {
       switch (path) {
         case "/":
@@ -397,7 +397,7 @@ async function thanks(env, url) {
     if (!health(env).stripe) return page(simplePage("Order not found", "<p>Payments aren't set up on this server.</p>", url.origin), 404);
     const session = await stripe(env, "GET", "checkout/sessions/" + encodeURIComponent(id));
     if (!session || session.mode !== "payment" || !session.metadata || session.metadata.product !== "astrospeed")
-      return page(simplePage("Order not found", "<p>That link isn't an AstroSpeed order.</p>", url.origin), 404);
+      return page(simplePage("Order not found", "<p>That link isn't an Astro Tweaks order.</p>", url.origin), 404);
     if (!isOurPaidCheckout(session)) {
       return page(
         simplePage(

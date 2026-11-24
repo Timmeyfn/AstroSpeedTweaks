@@ -310,7 +310,7 @@ func setTimer(on bool) float64 {
 		}
 		procNtSetTimerResolution.Call(uintptr(want), 1, uintptr(unsafe.Pointer(&cur)))
 		timerHeld = true
-		logf("Timer resolution held at %.3f ms while AstroSpeed is open", float64(cur)/10000)
+		logf("Timer resolution held at %.3f ms while Astro Tweaks is open", float64(cur)/10000)
 	} else if !on && timerHeld {
 		procNtSetTimerResolution.Call(0, 0, uintptr(unsafe.Pointer(&cur)))
 		timerHeld = false

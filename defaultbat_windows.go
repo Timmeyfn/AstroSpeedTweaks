@@ -60,7 +60,7 @@ func setDefaultBat(on bool) error {
 		return errors.New("there are no default tweaks in this version")
 	}
 	if !isElevated() {
-		return errors.New("AstroSpeed needs to run as administrator to change this")
+		return errors.New("Astro Tweaks needs to run as administrator to change this")
 	}
 	env := getEnv()
 	engine.mu.Lock()

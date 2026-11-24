@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turns every .bat file in the "custom" folder into a switch in AstroSpeed.
+"""Turns every .bat file in the "custom" folder into a switch in Astro Tweaks.
 
 Each .bat becomes one tweak in a "Your tweaks" section. Lines the app understands
 (reg add / reg delete / sc config / schtasks / bcdedit) get an automatic backup and
@@ -18,7 +18,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "custom_tweaks.go"
-NO_UNDO = "rem AstroSpeed: this line has no automatic undo"
+NO_UNDO = "rem Astro Tweaks: this line has no automatic undo"
 
 q = json.dumps  # a JSON string is also a valid Go string literal
 
@@ -184,7 +184,7 @@ def convert_line(line):
     if word in SKIP_WORDS:
         return "skip", SKIP_REASONS.get(word, f"'{word}' only works inside a .bat file")
     if word == "net" and len(s.split()) > 1 and s.split()[1].lower() == "session":
-        return "blank", None  # admin check; AstroSpeed already runs as admin
+        return "blank", None  # admin check; Astro Tweaks already runs as admin
     if re.search(r"%%|%~|%[0-9*]|![A-Za-z_]+!|%errorlevel%", s, re.I):
         return "skip", "uses .bat-only variables"
     if "&&" in s or "||" in s or re.search(r"(^|\s)\|\s", s):

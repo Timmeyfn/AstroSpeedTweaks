@@ -1,6 +1,6 @@
 package main
 
-// The full AstroSpeed tweak catalog.
+// The full Astro Tweaks tweak catalog.
 //
 // Ground rules this file must obey (enforced by catalog_test.go):
 //   * Nothing touches mouse sensitivity, pointer speed, pointer precision, DPI,
@@ -248,7 +248,7 @@ var Catalog = []Tweak{
 	{
 		ID: "global-timer", Cat: "cpu", Group: "Timers", Title: "Allow global timer resolution requests",
 		Desc:    "On Windows 11, a program asking for a 0.5 ms timer only gets it for itself. This restores the old global behaviour.",
-		Benefit: "AstroSpeed's Game Booster timer (and similar tools) can lower timer latency system-wide again.",
+		Benefit: "Astro Tweaks' Game Booster timer (and similar tools) can lower timer latency system-wide again.",
 		Impact:  1, Risk: "safe", Profile: 2, Reboot: true, When: []string{"win11"},
 		Actions: []Action{RegD(HKLM, pKernel, "GlobalTimerResolutionRequests", 1)},
 	},
@@ -298,7 +298,7 @@ var Catalog = []Tweak{
 
 	// ────────────────────────────── POWER ──────────────────────────────
 	{
-		ID: "power-plan", Cat: "power", Group: "Power plan", Title: "Switch to the AstroSpeed Performance power plan",
+		ID: "power-plan", Cat: "power", Group: "Power plan", Title: "Switch to the Astro Tweaks Performance power plan",
 		Desc:    "Creates a plan based on Ultimate Performance: CPU never clocks down, PCIe and USB never sleep, Wi-Fi at full power. Applies when plugged in only.",
 		Benefit: "No clock-speed dips or wake-up delays between fights.",
 		Note:    "Uses more power at idle. Battery settings are not changed.",

@@ -7,8 +7,8 @@
   "RT_MANIFEST": {
     "#1": {
       "0409": {
-        "identity": { "name": "AstroSpeed.Tweaks", "version": "2.1.0.0" },
-        "description": "AstroSpeed Tweaks",
+        "identity": { "name": "AstroSpeed.Tweaks", "version": "2.2.0.0" },
+        "description": "Astro Tweaks",
         "minimum-os": "win10",
         "execution-level": "require administrator",
         "ui-access": false,
@@ -29,20 +29,20 @@
   "RT_VERSION": {
     "#1": {
       "0000": {
-        "fixed": { "file_version": "2.1.0.0", "product_version": "2.1.0.0" },
+        "fixed": { "file_version": "2.2.0.0", "product_version": "2.2.0.0" },
         "info": {
           "0409": {
             "Comments": "PC optimizer for games. Every change is reversible.",
-            "CompanyName": "AstroSpeed",
-            "FileDescription": "AstroSpeed Tweaks",
-            "FileVersion": "2.1.0",
-            "InternalName": "AstroSpeedTweaks",
-            "LegalCopyright": "© 2026 AstroSpeed",
+            "CompanyName": "Astro Tweaks",
+            "FileDescription": "Astro Tweaks",
+            "FileVersion": "2.2.0",
+            "InternalName": "AstroTweaks",
+            "LegalCopyright": "© 2026 Astro Tweaks",
             "LegalTrademarks": "",
-            "OriginalFilename": "AstroSpeed Tweaks.exe",
+            "OriginalFilename": "Astro Tweaks.exe",
             "PrivateBuild": "",
-            "ProductName": "AstroSpeed Tweaks",
-            "ProductVersion": "2.1.0",
+            "ProductName": "Astro Tweaks",
+            "ProductVersion": "2.2.0",
             "SpecialBuild": ""
           }
         }

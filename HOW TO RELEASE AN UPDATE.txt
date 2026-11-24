@@ -2,7 +2,7 @@ Releasing an update
 ===================
 1. Build the new exe (run build.bat; remember to raise AppVersion in main.go first).
 2. Open https://astrospeed.dupelication.workers.dev/admin > Release tab.
-3. Pick the new "AstroSpeed Tweaks.exe". The version fills in by itself.
+3. Pick the new "Astro Tweaks.exe". The version fills in by itself.
 4. Type what's new > Upload and publish.
 
 Everyone with the app gets "Update now" next time they open it, and it installs

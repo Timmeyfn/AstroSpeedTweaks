@@ -92,7 +92,7 @@ func startupEnabled() bool {
 	return err == nil
 }
 
-// setStartup runs AstroSpeed at sign-in, minimised, with admin rights (via Task Scheduler,
+// setStartup runs Astro Tweaks at sign-in, minimised, with admin rights (via Task Scheduler,
 // so there's no admin prompt every time Windows starts).
 func setStartupEnabled(on bool) error {
 	if !on {
@@ -108,7 +108,7 @@ func setStartupEnabled(on bool) error {
 	}
 	_, err = runExe(15*time.Second, schtasksPath(), "/create", "/tn", startupTask, "/tr", `"`+exe+`" --minimized`, "/sc", "onlogon", "/rl", "highest", "/f")
 	if err == nil {
-		logf("AstroSpeed will start with Windows")
+		logf("Astro Tweaks will start with Windows")
 	}
 	return err
 }

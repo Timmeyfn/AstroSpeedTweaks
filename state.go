@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Backup records exactly what was there before AstroSpeed changed something.
+// Backup records exactly what was there before Astro Tweaks changed something.
 type Backup struct {
 	ID   string `json:"id"` // identity, e.g. reg|HKLM|path|name
 	Kind string `json:"kind"`

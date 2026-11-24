@@ -140,7 +140,7 @@ var handlerDescriptions = map[string]string{
 	"accesskeys":      `HKCU\Control Panel\Accessibility → StickyKeys / ToggleKeys / Keyboard Response: clear only the "shortcut" bit`,
 	"svchostsplit":    `HKLM\SYSTEM\CurrentControlSet\Control → SvcHostSplitThresholdInKB = your installed RAM in KB`,
 	"gpu_msi":         `Each graphics card → Device Parameters\Interrupt Management\MessageSignaledInterruptProperties → MSISupported = 1`,
-	"powerplan":       `powercfg: create "AstroSpeed Performance" from Ultimate Performance, CPU min/max 100%, boost aggressive, EPP 0, PCIe ASPM off, USB suspend off, disk never sleeps, Wi-Fi max performance (plugged in only), then make it active`,
+	"powerplan":       `powercfg: create "Astro Tweaks Performance" from Ultimate Performance, CPU min/max 100%, boost aggressive, EPP 0, PCIe ASPM off, USB suspend off, disk never sleeps, Wi-Fi max performance (plugged in only), then make it active`,
 	"coreparking":     `powercfg (active plan, plugged in): Processor core parking min cores = 100%, max cores = 100%`,
 	"idledisable":     `powercfg (active plan, plugged in): Processor idle disable = 1`,
 	"nicpower":        `Every physical network adapter → turn off Energy-Efficient Ethernet, Green Ethernet, power saving mode, ultra-low-power mode, and "allow the computer to turn off this device"`,

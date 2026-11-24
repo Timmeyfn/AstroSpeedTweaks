@@ -144,7 +144,7 @@ func applyPowerPlan(a Action, env Env) (Backup, int, error) {
 			return Backup{}, 0, errors.New("Windows would not create a new power plan on this PC")
 		}
 	}
-	_, _ = powercfg("/changename", sgPlan, "AstroSpeed Performance", "Maximum performance while plugged in. Created by AstroSpeed Tweaks; undo in the app to remove.")
+	_, _ = powercfg("/changename", sgPlan, "Astro Tweaks Performance", "Maximum performance while plugged in. Created by Astro Tweaks; undo in the app to remove.")
 	n := 0
 	for _, s := range planSettings {
 		if _, err := powercfg("/setacvalueindex", sgPlan, s.Sub, s.Set, strconv.Itoa(s.Val)); err == nil {
