@@ -65,6 +65,10 @@ type State struct {
 	AutoBoost     bool                   `json:"autoBoost"`
 	Hotkey        bool                   `json:"hotkey"`
 	NoAutoUpdate  bool                   `json:"noAutoUpdate"`
+	DefaultBatOff bool                   `json:"defaultBatOff,omitempty"`
+	AutoClean     bool                   `json:"autoClean,omitempty"`
+	LastAutoClean time.Time              `json:"lastAutoClean,omitempty"`
+	MemGuard      bool                   `json:"memGuard,omitempty"`
 }
 
 var (

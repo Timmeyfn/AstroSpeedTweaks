@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "2.0.0"
+const AppVersion = "2.1.0"
 
 // versionMarker lets the admin page read the version straight out of an uploaded exe.
 const versionMarker = "ASTROSPEED_VERSION=" + AppVersion + ";"
@@ -136,6 +136,9 @@ func main() {
 			logf("Hotkey: %v", err)
 		}
 	}
+	go applyDefaultBatOnStart()
+	go autoCleanOnStart()
+	go memGuardLoop()
 	logf("Detected: %s | %s | %.0f GB RAM | Fortnite: %v", curEnv.OSName, curEnv.CPU, curEnv.RAMGB, curEnv.FortniteExe != "")
 
 	_ = os.Setenv("WEBVIEW2_DEFAULT_BACKGROUND_COLOR", "FF000000")
@@ -338,9 +341,10 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		stateMu.Unlock()
 		stateMu.Lock()
 		autoBoost, hotkey, autoUpdate := appState.AutoBoost, appState.Hotkey, !appState.NoAutoUpdate
+		autoClean, memGuard, lastAutoClean := appState.AutoClean, appState.MemGuard, appState.LastAutoClean
 		stateMu.Unlock()
 		return map[string]interface{}{
-			"version": AppVersion, "license": licenseStatusNow(), "afterUpdate": launchedAfterUpdate, "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "server": serverURL(), "updateConfigured": updateCheckURL() != "", "pack": packStatus(),
+			"version": AppVersion, "license": licenseStatusNow(), "afterUpdate": launchedAfterUpdate, "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "defaultBat": defaultBatInfo(), "autoClean": autoClean, "memGuard": memGuard, "lastAutoClean": lastAutoClean, "server": serverURL(), "updateConfigured": updateCheckURL() != "", "pack": packStatus(),
 			"tweakCount": n, "actionCount": acts, "env": getEnv(), "admin": isElevated(),
 			"profile": profile, "totalChanges": total, "lastOptimize": last, "restorePoints": rps,
 			"cleanTargets": cleanTargets, "dataDir": dataDir, "lastCrash": lastCrash,
@@ -545,6 +549,20 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 				saveStateLocked()
 				stateMu.Unlock()
 			}
+		case "defaultBat":
+			err = setDefaultBat(a.On)
+		case "autoClean", "memGuard":
+			stateMu.Lock()
+			if a.Key == "autoClean" {
+				appState.AutoClean = a.On
+			} else {
+				appState.MemGuard = a.On
+			}
+			saveStateLocked()
+			stateMu.Unlock()
+			if a.Key == "autoClean" && a.On {
+				go autoCleanOnStart()
+			}
 		case "autoUpdate":
 			stateMu.Lock()
 			appState.NoAutoUpdate = !a.On
@@ -725,6 +743,16 @@ func runJob(kind string, ids []string, restore bool, label string, profile int) 
 		changes += r.Changes
 		results = append(results, r)
 		emit("progress", map[string]interface{}{"phase": "done", "i": i + 1, "n": total, "id": t.ID, "title": t.Title, "status": r.Status, "msg": r.Msg, "changes": r.Changes})
+	}
+	if kind == "revertAll" || kind == "revert" {
+		for _, t := range list {
+			if t.ID == defaultBatID { // undone on purpose: don't re-apply it next launch
+				stateMu.Lock()
+				appState.DefaultBatOff = true
+				saveStateLocked()
+				stateMu.Unlock()
+			}
+		}
 	}
 	if kind == "apply" && profile > 0 {
 		stateMu.Lock()

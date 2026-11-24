@@ -8,9 +8,10 @@ import "encoding/json"
 // tweaks below so people can see AstroSpeed working. Everything else needs a key.
 // To change what's free, edit freeTweaks.
 var freeTweaks = map[string]bool{
-	"gamemode":  true, // Turn on Game Mode
-	"gamedvr":   true, // Turn off Game DVR background recording
-	"telemetry": true, // Turn down Windows telemetry
+	"gamemode":   true, // Turn on Game Mode
+	"gamedvr":    true, // Turn off Game DVR background recording
+	"telemetry":  true, // Turn down Windows telemetry
+	defaultBatID: true, // the built-in default .bat (Settings > bottom)
 }
 
 // isPro reports whether a tweak needs a key.
@@ -31,7 +32,7 @@ func paidTool(method string, args []byte) bool {
 	case "boostTimer", "setAutoBoost":
 		return a.On
 	case "setSetting":
-		return a.Key == "hotkey" && a.On
+		return (a.Key == "hotkey" || a.Key == "autoClean" || a.Key == "memGuard") && a.On
 	}
 	return false
 }

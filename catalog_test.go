@@ -51,7 +51,7 @@ func TestCatalogIsWellFormed(t *testing.T) {
 			t.Errorf("duplicate id %s", tw.ID)
 		}
 		ids[tw.ID] = true
-		if !cats[tw.Cat] {
+		if !cats[tw.Cat] && tw.ID != defaultBatID { // the default .bat lives in Settings, not a section
 			t.Errorf("%s has unknown category %s", tw.ID, tw.Cat)
 		}
 		if tw.Title == "" || tw.Desc == "" || tw.Benefit == "" {

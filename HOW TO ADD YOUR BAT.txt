@@ -15,3 +15,11 @@ EVERY TIME YOU WANT TO ADD OR CHANGE A .BAT
 
 The first build takes a few minutes while Go downloads what it needs.
 After that it takes under a minute.
+
+THE DEFAULT .BAT (EVERYONE GETS IT, RUNS EVERY TIME THE APP OPENS)
+1. Open the "defaults" folder and replace default.bat with your own .bat
+   (keep the name default.bat). A "rem" line near the top becomes its description.
+2. Raise the version in main.go (const AppVersion = "...").
+3. Double-click build.bat, then upload the new exe in admin > Release.
+It shows as a switch at the bottom of Settings, free for everyone, on by default.
+If default.bat has no commands (only rem lines), the switch is hidden.

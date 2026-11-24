@@ -1554,12 +1554,28 @@ function viewSettings() {
     <div class="panel spot"><div class="panel-h"><h2>Boosting</h2></div><div class="panel-b">
       ${setRow('hotkey', 'Boost hotkey: Ctrl + Alt + B', 'Press it any time, even in a game, to clear memory, tighten the timer, flush DNS and raise the running game to high priority. You hear a short sound when it’s done.', d.hotkey)}
       ${setRow('autoboost', 'Boost automatically when a game starts', 'While AstroSpeed is open, any supported game is boosted the moment it launches.', d.autoBoost)}
+      ${setRow('memGuard', 'Keep memory clear while you play', 'If your RAM gets nearly full during a game, AstroSpeed clears Windows’ standby memory (at most every 5 minutes) so the game isn’t starved.', d.memGuard, paidTag())}
+    </div></div>
+    <div class="panel spot"><div class="panel-h"><h2>Maintenance</h2></div><div class="panel-b">
+      ${setRow('autoClean', 'Clean up automatically every week', 'Clears temp files and caches once a week while AstroSpeed is open. The Recycle Bin is never emptied automatically.', d.autoClean, paidTag() + (d.lastAutoClean && fmtDate(d.lastAutoClean) ? `<span class="dim small" style="display:block;margin-top:4px">Last run ${esc(fmtDate(d.lastAutoClean))}</span>` : ''))}
     </div></div>
     <div class="panel spot"><div class="panel-h"><h2>Startup</h2></div><div class="panel-b">
       ${setRow('startup', 'Start with Windows', 'Opens AstroSpeed minimised when you sign in, so the hotkey and auto-boost are always ready. No admin prompt each time.', S.startupOn)}
       <div class="actions"><button class="btn sm ghost" data-open="logs" type="button">${ico('log')}Open logs and backups</button></div>
     </div></div>
+    ${defaultBatPanel(d)}
   </div>`;
+}
+const paidTag = () => proUnlocked() ? '' : `<span class="pro-tag" style="display:inline-flex;margin-top:6px">${ico('lock')}Key</span>`;
+// The default .bat built into this version: always at the bottom of Settings.
+function defaultBatPanel(d) {
+  const b = d.defaultBat || {};
+  if (!b.available) return '';
+  const s = st('default-bat');
+  const state = !b.on ? 'Off. Nothing from it is applied.' : s === 'on' || s === 'native' ? 'On and applied.' : 'On. It’s applied each time AstroSpeed opens.';
+  return `<div class="panel spot default-bat"><div class="panel-h"><h2>Default tweaks</h2></div><div class="panel-b">
+      ${setRow('defaultBat', b.title || 'AstroSpeed default tweaks', `${esc(b.desc || '')} Runs every time AstroSpeed opens. Turning it off undoes it.`, b.on, `<span class="dim small" style="display:block;margin-top:4px">${esc(state)}</span>`)}
+    </div></div>`;
 }
 
 function licensePanel(d) {
@@ -1647,7 +1663,7 @@ function showUpgrade() {
 }
 // At most once a day, free users see the upgrade window shortly after the app opens.
 function maybeDailyUpsell() {
-  if (proUnlocked() || !LIC().required) return;
+  if (proUnlocked() || !LIC().required || S.data.afterUpdate) return;
   const today = new Date().toDateString();
   if (prefGet('sg-upsell-day') === today) return;
   if (paidStats().locked === 0) return;
@@ -1722,11 +1738,19 @@ async function runUpdate() {
     toast(e.message || 'Update failed.', 'err', 8000);
   }
 }
+// After an update: a short "what's new" with the notes you wrote when you published it.
+function showWhatsNew(u) {
+  if (!$('#modal').hidden) return;
+  openModal(`
+    <div class="dialog-h"><div><div class="eyebrow">Updated</div><h2>You're on AstroSpeed ${esc(u.latest)}</h2><p>Here's what changed in this version.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
+    <div class="dialog-b">${notesHTML(u.notes)}</div>
+    <div class="dialog-f"><span class="spacer"></span><button class="btn primary" data-close data-autofocus type="button">Got it</button></div>`, true);
+}
 async function autoCheckUpdate() {
   if (!S.data.updateConfigured || !S.data.autoUpdate) return;
   try {
     S.update = await api('checkUpdate');
-    if (!S.update.available) return;
+    if (!S.update.available) { if (S.data.afterUpdate && S.update.latest === S.data.version) showWhatsNew(S.update); return; }
     if (S.data.afterUpdate) { renderNav(); toast(`The update finished, but the server still offers ${S.update.latest}. Re-upload the right .exe in your admin page.`, 'err', 10000); return; }
     renderNav();
     let skipped = '';
@@ -2506,13 +2530,19 @@ document.addEventListener('click', async e => {
     case 'setting': {
       const key = b.dataset.key;
       if (key === 'motion') { applyMotion(document.documentElement.classList.contains('motion-off'), true); rerenderView(); break; }
-      if ((key === 'autoboost' || key === 'hotkey') && !proUnlocked()) { showUpgrade(); break; }
+      if ((key === 'autoboost' || key === 'hotkey' || key === 'autoClean' || key === 'memGuard') && !proUnlocked()) { showUpgrade(); break; }
+      if (key === 'defaultBat') {
+        const want = !(S.data.defaultBat && S.data.defaultBat.on);
+        b.disabled = true;
+        try { await api('setSetting', { key, on: want }); S.data.defaultBat.on = want; toast(want ? 'Default tweaks are on.' : 'Default tweaks are off and undone.', 'ok'); await refreshStates(); } catch (err) { toast(err.message, 'err', 7000); }
+        rerenderView(); break;
+      }
       if (key === 'autoboost') { try { S.data.autoBoost = await api('setAutoBoost', { on: !S.data.autoBoost }); } catch (err) { toast(err.message, 'err'); } rerenderView(); break; }
       const cur = key === 'startup' ? !!S.startupOn : !!S.data[key];
       try {
         await api('setSetting', { key, on: !cur });
         if (key === 'startup') S.startupOn = !cur; else S.data[key] = !cur;
-        toast({ startup: !cur ? 'AstroSpeed will start with Windows.' : 'AstroSpeed won’t start with Windows.', hotkey: !cur ? 'Hotkey on. Press Ctrl + Alt + B to boost.' : 'Hotkey off.', autoUpdate: !cur ? 'AstroSpeed will check for updates when it opens.' : 'Automatic update checks are off.' }[key], 'ok');
+        toast({ startup: !cur ? 'AstroSpeed will start with Windows.' : 'AstroSpeed won’t start with Windows.', hotkey: !cur ? 'Hotkey on. Press Ctrl + Alt + B to boost.' : 'Hotkey off.', autoUpdate: !cur ? 'AstroSpeed will check for updates when it opens.' : 'Automatic update checks are off.', autoClean: !cur ? 'AstroSpeed will clean up once a week.' : 'Weekly clean-up is off.', memGuard: !cur ? 'Memory guard is on while you play.' : 'Memory guard is off.' }[key], 'ok');
       } catch (err) { toast(err.message, 'err', 7000); }
       rerenderView(); break;
     }
@@ -2632,6 +2662,9 @@ window.addEventListener('resize', () => {
 // ───────────────────────── boot ─────────────────────────
 $('#view').addEventListener('scroll', updateScrollBar, { passive: true });
 on('hotkeyboost', d => toast(`Boosted${d.game ? ' ' + d.game : ''}: ${Math.max(0, Math.round(d.freedMB))} MB memory freed, timer tightened.`, 'ok', 5000));
+on('autoCleaned', r => { S.data.lastAutoClean = new Date().toISOString(); if (r.freedMB >= 1) toast(`Weekly clean-up freed ${fmtMB(r.freedMB)}.`, 'ok', 5000); if (S.page === 'settings') rerenderView(); });
+on('memGuard', r => toast(`Memory guard cleared ${fmtMB(r.freedMB)} so your game has room.`, 'ok', 4000));
+on('defaultBat', () => refreshStates());
 on('license', l => { const was = proUnlocked(); S.data.license = l; if (was !== proUnlocked()) reloadCatalog(); renderNav(); rerenderView(); if (l.needsRevert) enforceTrialEnd(); else if (l.problem && !l.activated) toast(l.problem + ' The app is back on the free version.', 'err', 9000); });
 // When a trial is over (or its key was removed), undo every paid tweak it applied, then tell the backend.
 let trialEnding = false;

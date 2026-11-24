@@ -67,3 +67,20 @@ func TestPaidTool(t *testing.T) {
 		}
 	}
 }
+
+func TestDefaultBat(t *testing.T) {
+	old := defaultBatText
+	defer func() { defaultBatText = old }()
+	defaultBatText = "@echo off\nrem only comments\n"
+	if _, _, ok := defaultBatTweak(); ok {
+		t.Fatal("a .bat with no commands should not become a tweak")
+	}
+	defaultBatText = "@echo off\nrem Speeds things up a bit\nreg add \"HKCU\\Software\\Test\" /v X /t REG_DWORD /d 1 /f\n"
+	tw, _, ok := defaultBatTweak()
+	if !ok || tw.ID != defaultBatID || tw.Profile != 0 || len(tw.Actions) == 0 {
+		t.Fatalf("bad default tweak: %+v", tw)
+	}
+	if isPro(tw) {
+		t.Fatal("default tweak must be free")
+	}
+}
