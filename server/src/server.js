@@ -76,7 +76,7 @@ export default {
         case "/admin/upload":
           return await adminUpload(request, env, url);
         case "/health":
-          return json(health(env));
+          return json(await healthFull(env));
       }
       return new Response("Not found", { status: 404, headers: CORS });
     } catch (e) {
@@ -84,9 +84,7 @@ export default {
       console.log("error on " + path + ": " + msg);
       if (request.method === "GET" && (path === "/thanks" || path === "/buy"))
         return page(simplePage("Something went wrong", "<p>We couldn't load this page just now. Your payment (if you made one) is safe. Please refresh in a minute" + (path === "/thanks" ? " — this same link will show your key." : ".") + "</p>", url.origin), 500);
-      // only setup problems are spelled out; anything else stays generic
-      const setup = /LICENSES storage/.test(msg);
-      return json({ ok: false, reason: setup ? "Server error: " + msg : "Server error. Please try again." }, 500);
+      return json({ ok: false, code: "server", reason: explainError(msg) }, 500);
     }
   },
 };
@@ -132,6 +130,13 @@ function newerVersion(a, b) {
   return false;
 }
 
+async function healthFull(env) {
+  const h = health(env);
+  if (env.LICENSES) {
+    try { await env.LICENSES.get("cfg:settings"); h.storageRead = true; } catch (e) { h.storageRead = false; h.storageError = explainError(String(e && e.message || e)); }
+  }
+  return h;
+}
 function health(env) {
   const pass = typeof env.ADMIN_PASS === "string" ? env.ADMIN_PASS.trim() : "";
   return {
@@ -173,6 +178,15 @@ function noteFail(ip) {
   f.n++;
   FAILS.set(ip, f);
   if (FAILS.size > 5000) FAILS.clear();
+}
+
+// Turns Cloudflare errors into something the owner can act on (shown in the app and admin page).
+function explainError(msg) {
+  if (/LICENSES storage/.test(msg)) return "Server setup: " + msg;
+  if (/limit|quota|exceeded|429/i.test(msg))
+    return "The key server hit Cloudflare's free daily limit (1,000 saves a day). It resets at 8am Perth time; activations work again then.";
+  if (/KV|namespace|binding/i.test(msg)) return "The key server's storage isn't working: " + msg;
+  return "The key server had a problem (" + msg.slice(0, 120) + "). Try again in a minute.";
 }
 
 function needStorage(env) {
@@ -267,6 +281,7 @@ async function activate(request, env) {
   needStorage(env);
   const { key, hwid } = await request.json().catch(() => ({}));
   const k = normKey(key);
+  if (!isKeyName(k)) return json({ ok: false, code: "invalid", reason: "That doesn't look like a full key. It looks like ASTRO-XXXXX-XXXXX-XXXXX." });
   if (!k || !hwid) return json({ ok: false, code: "missing", reason: "Enter your key." });
   const rec = await env.LICENSES.get(k, "json");
   if (!rec) return json({ ok: false, code: "invalid", reason: "That key isn't valid. Check it was copied exactly." });
@@ -287,6 +302,7 @@ async function check(request, env) {
   needStorage(env);
   const { key, hwid } = await request.json().catch(() => ({}));
   const k = normKey(key);
+  if (!isKeyName(k)) return json({ ok: false, reason: "invalid" });
   const rec = await env.LICENSES.get(k, "json");
   if (!rec) return json({ ok: false, reason: "invalid" });
   if (rec.revoked) return json({ ok: false, reason: "disabled" });
@@ -477,9 +493,9 @@ async function listKeys(env) {
       if (!isKeyName(it.name)) continue;
       if (it.metadata && "createdAt" in it.metadata) rows.push({ key: it.name, ...it.metadata });
       else {
-        // made by an older server version: read it once and add metadata for next time
+        // made by an older server version: read it (no write here — free plan has 1,000 writes/day)
         const rec = await env.LICENSES.get(it.name, "json");
-        if (rec) { rows.push({ key: it.name, ...rec }); if (rows.length < 300) await putKey(env, it.name, rec); }
+        if (rec) rows.push({ key: it.name, ...rec });
       }
     }
     cursor = page.list_complete ? null : page.cursor;

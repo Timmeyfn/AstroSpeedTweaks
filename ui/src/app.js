@@ -10,7 +10,7 @@ window.__sg = {
     const p = pending.get(id);
     if (!p) return;
     pending.delete(id);
-    if (payload && payload.error !== undefined) p.reject(new Error(payload.error));
+    if (payload && payload.error !== undefined) { if (/needs an AstroSpeed key/i.test(payload.error) && typeof showUpgrade === 'function') setTimeout(() => showUpgrade(), 0); p.reject(new Error(payload.error)); }
     else p.resolve(payload ? payload.ok : null);
   },
   event(name, data) { (listeners[name] || []).slice().forEach(f => f(data)); }
@@ -108,6 +108,14 @@ function timeLeft(ms) {
   return `${Math.max(1, Math.ceil(d / 60e3))} min left`;
 }
 const shopURL = () => ((S.data && S.data.server) || '') + '/#pricing';
+// Real numbers for the paywall: how many fixes this PC can use, and how many are locked.
+function paidStats() {
+  const usable = T().filter(t => avail(t.id));
+  const lockedL = usable.filter(t => locked(t));
+  const on = appliedCount(usable);
+  return { total: usable.length, locked: lockedL.length, free: usable.length - lockedL.length, on, pct: usable.length ? Math.round(on / usable.length * 100) : 0, high: lockedL.filter(t => t.impact >= 3).length };
+}
+const paidToolPages = { booster: 'Game booster', cleaner: 'System cleaner', startup: 'Startup apps' };
 
 const toolPages = [
   { id: 'checkup', title: 'PC checkup', icon: 'pulse', sub: 'A full scan of what is holding your FPS back, with a score and one-click fixes.' },
@@ -187,7 +195,8 @@ function render() {
   else {
     const p = [...toolPages, ...safetyPages].find(x => x.id === S.page);
     title = p.title; sub = p.sub;
-    v.innerHTML = ({ checkup: viewCheckup, booster: viewBooster, cleaner: viewCleaner, startup: viewStartup, network: viewNetwork, safety: viewSafety, about: viewAbout, settings: viewSettings })[S.page]();
+    const inner = ({ checkup: viewCheckup, booster: viewBooster, cleaner: viewCleaner, startup: viewStartup, network: viewNetwork, safety: viewSafety, about: viewAbout, settings: viewSettings })[S.page]();
+    v.innerHTML = paidToolPages[S.page] && !proUnlocked() ? toolPaywall(S.page, inner) : inner;
     afterTool();
   }
   const tb = $('#titleBlock');
@@ -230,7 +239,10 @@ function viewDashboard() {
   const first = !S.heroDone;
   let line;
   const full = pct >= 98;
-  if (full) line = 'Everything in Recommended and Competitive is switched on. Manual-only extras are waiting in each section if you want them.';
+  const ps = paidStats();
+  const freeUser = !proUnlocked() && ps.locked > 0;
+  if (freeUser) line = `${ps.locked} of the ${ps.total} speed fixes AstroSpeed found for this PC are locked. The free version can only switch on ${ps.free}.`;
+  else if (full) line = 'Everything in Recommended and Competitive is switched on. Manual-only extras are waiting in each section if you want them.';
   else line = pct >= 60
     ? `${plural(pendComp, 'tweak')} in the Competitive profile ${pendComp === 1 ? 'is' : 'are'} still off. Optimize switches them on after making a restore point.`
     : `${plural(pendRec, 'safe tweak')} and ${pendComp - pendRec} competitive ones are still off. Optimize applies them in one go, after making a restore point, and every change can be undone.`;
@@ -265,12 +277,13 @@ function viewDashboard() {
       <p class="lede hero-step" style="--s:4">${esc(line)}</p>
       <div class="hero-actions hero-step" style="--s:5">
         <button class="btn primary lg" data-act="optimize" type="button">${ico('glider')}<span>Optimize now</span>${ico('arrow', 'arr')}</button>
-        <button class="btn secondary lg" data-nav="safety" type="button">${ico('shield')}Restore &amp; undo</button>
+        ${freeUser ? `<button class="btn secondary lg unlock-btn" data-act="upgrade" type="button">${ico('lock')}Unlock ${ps.locked} fixes</button>` : `<button class="btn secondary lg" data-nav="safety" type="button">${ico('shield')}Restore &amp; undo</button>`}
       </div>
       <p class="compat hero-step" style="--s:6"><b>${cnt(allOn)}</b> tweaks on<i></i><b>${cnt(S.data.totalChanges || 0)}</b> changes, all reversible<i></i>${last ? 'Last optimized ' + esc(last) : 'Restore point made first'}</p>
     </div>
   </section>
   <div class="ribbon" aria-hidden="true"><div class="ribbon-track">${ribbonWords()}${ribbonWords()}</div></div>
+  ${freeUser ? dashUpsell(ps) : ''}
   <div class="dash-row">${liveHTML()}${yourGamesHTML()}</div>
   <div class="dash-grid">
     <div class="panel spot"><div class="panel-h"><h2>This PC</h2><button class="btn sm quiet" data-act="reprobe" type="button">${ico('reboot')}Rescan</button></div><div class="panel-b">${specList()}</div></div>
@@ -549,6 +562,7 @@ async function runScan() {
   S.checkup = info || {}; S.scanning = false; S.scanStamp = Date.now();
   if (S.page === 'checkup') rerenderView();
 }
+const fixBtn = id => locked(byId(id)) ? `<button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Fix with a key</button>` : `<button class="btn sm ghost" data-act="apply1" data-id="${id}" type="button">Fix</button>`;
 function checkupItems() {
   const c = S.checkup || {}, e = S.data.env || {};
   const out = [];
@@ -556,7 +570,7 @@ function checkupItems() {
   const twCheck = (id, w, name, offText, onText) => {
     if (!byId(id) || st(id) === 'na') return;
     const ok = isOn(id);
-    add({ w, ok, name, small: ok ? onText : offText, fix: ok ? '' : `<button class="btn sm ghost" data-act="apply1" data-id="${id}" type="button">Fix</button>`, tweak: ok ? '' : id });
+    add({ w, ok, name, small: ok ? onText : offText, fix: ok ? '' : fixBtn(id), tweak: ok ? '' : id });
   };
   (c.displays || []).forEach(d => {
     const low = d.maxHz > d.hz + 1;
@@ -566,7 +580,7 @@ function checkupItems() {
   });
   const goodPlan = /high|ultimate|astro|bitsum|performance/i.test(c.powerPlan || '') || isOn('power-plan');
   add({ w: 3, ok: goodPlan, name: 'Power plan', small: goodPlan ? (c.powerPlan || 'High performance') + ' is active' : `${c.powerPlan || 'Balanced'} lets Windows clock your CPU down mid-game`,
-    fix: goodPlan || !byId('power-plan') || st('power-plan') === 'na' ? '' : `<button class="btn sm ghost" data-act="apply1" data-id="power-plan" type="button">Fix</button>`, tweak: goodPlan ? '' : 'power-plan' });
+    fix: goodPlan || !byId('power-plan') || st('power-plan') === 'na' ? '' : fixBtn('power-plan'), tweak: goodPlan ? '' : 'power-plan' });
   if (e.probed && e.ramXmp && e.ramXmp !== 'unknown') add({ w: 3, ok: e.ramXmp === 'ok', name: 'Memory speed',
     small: e.ramXmp === 'ok' ? `${e.ramConf} MT/s, its rated speed` : e.ramXmp === 'likely_off' ? `${e.ramConf} MT/s. XMP/EXPO looks switched off in the BIOS` : `${e.ramConf} of ${e.ramSpeed} MT/s rated`,
     fix: e.ramXmp === 'ok' ? '' : `<button class="btn sm ghost" data-nav="cat:kernel" type="button">How to fix</button>` });
@@ -588,8 +602,8 @@ function checkupItems() {
   if (S.bgApps) { const mb = S.bgApps.reduce((a, b) => a + (b.memMB || 0), 0); add({ w: 1, ok: mb < 1500, name: 'Apps running in the background', small: mb ? `${fmtMB(mb)} used by ${plural(S.bgApps.length, 'app')} you could close before playing` : 'Nothing heavy running', fix: mb >= 1500 ? `<button class="btn sm ghost" data-nav="booster" type="button">Close them</button>` : '' }); }
   if (c.memLoad) add({ w: 1, ok: c.memLoad < 80, name: 'Memory in use', small: `${c.memLoad}% of your RAM is in use right now`, fix: c.memLoad >= 80 ? `<button class="btn sm ghost" data-nav="booster" type="button">Free memory</button>` : '' });
   if (c.uptimeHours) { const days = c.uptimeHours / 24; add({ w: 1, ok: days < 3, name: 'Time since restart', small: days >= 1 ? `${days.toFixed(days < 10 ? 1 : 0)} days. ` + (days >= 3 ? 'A restart clears leaked memory and stuck drivers' : 'Fine') : `${Math.max(1, Math.round(c.uptimeHours))} hours`, fix: days >= 3 ? `<button class="btn sm ghost" data-act="restart" type="button">Restart</button>` : '' }); }
-  const pend = pendingFor(2).length;
-  add({ w: 3, ok: pend === 0, name: 'AstroSpeed tweaks', small: pend ? `${plural(pend, 'tweak')} in the Competitive profile ${pend === 1 ? 'is' : 'are'} still off` : 'Everything in Competitive is on', fix: pend ? `<button class="btn sm ghost" data-act="optimize" type="button">Optimize</button>` : '' });
+  const pend = pendingFor(2).length, lk = lockedFor(2).length;
+  add({ w: 3, ok: pend === 0 && lk === 0, name: 'AstroSpeed tweaks', small: pend + lk ? `${plural(pend + lk, 'speed fix', 'speed fixes')} for this PC ${pend + lk === 1 ? 'is' : 'are'} still off${lk ? ` (${lk} need a key)` : ''}` : 'Everything in Competitive is on', fix: pend ? `<button class="btn sm ghost" data-act="optimize" type="button">Optimize</button>` : lk ? `<button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Unlock</button>` : '' });
   return out;
 }
 function scoreOf(items) {
@@ -605,7 +619,7 @@ function viewCheckup() {
   }
   const items = checkupItems();
   const score = scoreOf(items);
-  const bad = items.filter(i => !i.ok), fixable = bad.filter(i => i.tweak);
+  const bad = items.filter(i => !i.ok), fixable = bad.filter(i => i.tweak && byId(i.tweak) && !locked(byId(i.tweak)));
   items.sort((a, b) => (a.ok - b.ok) || (b.w - a.w));
   const tone = score >= 90 ? 'ok' : score >= 55 ? 'mid' : 'low';
   return `
@@ -617,7 +631,7 @@ function viewCheckup() {
       <div class="eyebrow">Your score</div>
       <h2>${esc(gradeOf(score))}</h2>
       <p class="muted">${bad.length ? `${plural(bad.length, 'thing')} could be costing you frames.${fixable.length ? ` ${fixable.length} can be fixed in one click.` : ''}` : 'Nothing is holding this PC back. Run it again after big Windows or driver updates.'}</p>
-      <div class="actions">${fixable.length ? `<button class="btn primary" data-act="fixAll" type="button">${ico('check')}Fix ${plural(fixable.length, 'issue')}</button>` : ''}<button class="btn ghost" data-act="rescan" type="button">${ico('reboot')}Scan again</button></div>
+      <div class="actions">${fixable.length ? `<button class="btn primary" data-act="fixAll" type="button">${ico('check')}Fix ${plural(fixable.length, 'issue')}</button>` : ''}${!proUnlocked() && bad.some(i => i.tweak && byId(i.tweak) && locked(byId(i.tweak))) ? `<button class="btn ${fixable.length ? 'secondary' : 'primary'}" data-act="upgrade" type="button">${ico('lock')}Unlock the other fixes</button>` : ''}<button class="btn ghost" data-act="rescan" type="button">${ico('reboot')}Scan again</button></div>
     </div>
     <div class="score-legend">${[['ok', items.filter(i => i.ok).length, 'Passed'], ['warn', bad.length, 'To fix']].map(([k, n, l]) => `<div><b class="ico-${k}" data-count="${n}">${n}</b><span>${l}</span></div>`).join('')}</div>
   </div>
@@ -741,7 +755,7 @@ function licensePanel(d) {
     ? `<p style="margin:0;display:flex;align-items:center;gap:8px">${ico('clock')}<b>Trial · ${esc(timeLeft(l.expiresAt))}</b></p><p class="muted small" style="margin:8px 0 12px">Ends ${esc(new Date(l.expiresAt).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}. When it ends, the paid tweaks it unlocked are undone automatically and the app goes back to the free version. Buy a key to keep everything.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="buyKey" type="button">${ico('ext')}Buy a key</button><button class="btn sm quiet" data-act="upgrade" type="button">Enter a full key</button><button class="btn sm quiet" data-act="removeKey" type="button">End trial now</button></div>`
     : l.activated
     ? `<p style="margin:0;display:flex;align-items:center;gap:8px">${ico('ok','ico-ok')}<b>Full version unlocked</b>${l.offline ? ' <span class="muted">(offline — using your saved key)</span>' : ''}</p><p class="muted small" style="margin:8px 0 12px">Key ${esc(l.key||'')} &middot; locked to this PC.</p><div class="actions" style="margin:0"><button class="btn sm quiet" data-act="removeKey" type="button">Remove key from this PC</button></div>`
-    : `${l.problem ? `<p class="key-problem">${ico('warn','ico-warn')}${esc(l.problem)}</p>` : ''}<p style="margin:0"><b>You're on the free version.</b></p><p class="muted small" style="margin:8px 0 14px">A key unlocks the full Optimize, all per-game tweaks, network/BIOS tweaks, auto-boost and the hotkey.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Enter a key</button><button class="btn sm ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button></div>`;
+    : `${l.problem ? `<p class="key-problem">${ico('warn','ico-warn')}${esc(l.problem)}</p>` : ''}<p style="margin:0"><b>You're on the free version.</b></p><p class="muted small" style="margin:8px 0 14px">${paidStats().locked} of the ${paidStats().total} speed fixes for this PC are locked, along with the game booster, cleaner, startup manager, DNS switcher, auto-boost and the hotkey. A key unlocks all of it.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Enter a key</button><button class="btn sm ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button></div>`;
   return `<div class="panel spot"><div class="panel-h"><h2>Your key</h2></div><div class="panel-b">${body}</div></div>`;
 }
 function packPanel(d) {
@@ -764,7 +778,7 @@ function packPanel(d) {
 async function reloadCatalog(info) {
   try {
     const nd = await api('init');
-    S.data = Object.assign(S.data, { categories: nd.categories, catalog: nd.catalog, games: nd.games, tweakCount: nd.tweakCount, actionCount: nd.actionCount, pack: nd.pack || info });
+    S.data = Object.assign(S.data, { categories: nd.categories, catalog: nd.catalog, games: nd.games, tweakCount: nd.tweakCount, actionCount: nd.actionCount, pack: nd.pack || info || S.data.pack, license: nd.license || S.data.license });
     const r = await api('states', { bcd: false });
     S.states = r.states || S.states;
     try { S.data.env.games = await api('games'); } catch (e) {}
@@ -774,29 +788,57 @@ async function reloadCatalog(info) {
 }
 
 // ───────────────────────── licence (free vs key) ─────────────────────────
+function dashUpsell(ps) {
+  const lockedPct = ps.total ? Math.round(ps.locked / ps.total * 100) : 0;
+  return `<section class="upsell panel spot">
+    <div class="us-meter"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="50"/><circle class="val" cx="60" cy="60" r="50" style="stroke-dasharray:${(2 * Math.PI * 50).toFixed(1)};stroke-dashoffset:${(2 * Math.PI * 50 * (1 - ps.pct / 100)).toFixed(1)}"/></svg><div><b>${ps.pct}%</b><span>optimized</span></div></div>
+    <div class="us-copy">
+      <div class="eyebrow">${ico('lock')}Free version</div>
+      <h2>Your PC is only ${ps.pct}% optimized</h2>
+      <p><b>${ps.locked} of ${ps.total}</b> speed fixes for this PC (${lockedPct}%) are locked${ps.high ? `, including <b>${plural(ps.high, 'high-impact fix', 'high-impact fixes')}</b>` : ''}. Game booster, the cleaner, startup manager, auto-boost and per-game tweaks are locked too.</p>
+    </div>
+    <div class="us-cta"><button class="btn primary lg" data-act="upgrade" type="button">${ico('lock')}Unlock everything</button><span class="muted small">One key · every update included</span></div>
+  </section>`;
+}
+
 function licenseChip() {
   const l = LIC();
   if (!l.required) return '';
   if (l.activated && l.trial) return `<button class="lic-chip trial" data-act="upgrade" type="button">${ico('clock')}<span>Trial · ${esc(timeLeft(l.expiresAt))}</span></button>`;
   if (l.activated) return `<div class="lic-chip on">${ico('ok','ico-ok')}<span>Full version${l.offline ? ' (offline)' : ''}</span></div>`;
-  return `<button class="lic-chip buy" data-act="upgrade" type="button">${ico('lock')}<span>Free version &middot; Unlock</span></button>`;
+  const ps = paidStats();
+  return `<button class="lic-chip buy" data-act="upgrade" type="button">${ico('lock')}<span><b>Free version</b><small>${ps.locked} fixes locked &middot; Unlock</small></span></button>`;
 }
 function showUpgrade() {
-  const proList = T().filter(t => t.pro);
+  const ps = paidStats(), l = LIC();
+  const shop = S.shop || {};
+  const price = shop.priceShort || shop.priceLabel || '';
+  const title = l.activated && l.trial ? 'Keep everything after your trial' : `Unlock all ${ps.total} speed fixes`;
   openModal(`
-    <div class="dialog-h"><div><div class="eyebrow">AstroSpeed key</div><h2>Unlock the full version</h2><p>The free version gives you the dashboard, PC Checkup, Game Booster, cleaner and the safe recommended tweaks. A key unlocks everything else.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
+    <div class="dialog-h up-h"><div><div class="eyebrow">${ico('lock')}AstroSpeed full version</div><h2>${esc(title)}</h2><p>${ps.locked ? `Your PC is <b>${ps.pct}% optimized</b>. <b>${ps.locked}</b> of the fixes AstroSpeed found for it are locked on the free version.` : 'One key unlocks every tweak and tool in AstroSpeed.'}</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
     <div class="dialog-b">
       <div class="up-grid">
-        <div class="up-col"><h4>Free</h4><ul>${['Dashboard & PC Checkup','Game Booster & cleaner','Safe recommended tweaks','Ping test'].map(x=>`<li>${ico('check','ico-ok')}${x}</li>`).join('')}</ul></div>
-        <div class="up-col pro"><h4>${ico('lock')}With a key</h4><ul>${['Full one-click Optimize (Competitive)','All per-game tweaks','Network, GPU & BIOS tweaks','Auto-boost & the boost hotkey','Live tweaks sent to the app'].map(x=>`<li>${ico('check','ico-ok')}${x}</li>`).join('')}</ul></div>
+        <div class="up-col"><h4>Free</h4><ul>${['Dashboard & PC Checkup scan', 'Ping test', `${plural(ps.free, 'free tweak')}`, 'Undo & restore'].map(x => `<li>${ico('check', 'ico-ok')}${x}</li>`).join('')}</ul></div>
+        <div class="up-col pro"><h4>${ico('lock')}Full version${price ? ` <span class="up-price">${esc(price)}</span>` : ''}</h4><ul>${[`All ${ps.total} tweaks for this PC${ps.high ? ` (${ps.high} high-impact)` : ''}`, 'One-click Optimize: Recommended & Competitive', 'Every per-game tweak', 'Game booster, cleaner & startup manager', 'Auto-boost, the boost hotkey & DNS switcher', 'New live tweaks and every update'].map(x => `<li>${ico('check', 'ico-ok')}${x}</li>`).join('')}</ul></div>
       </div>
+      <p class="up-note">${ico('shield')}Everything stays reversible. One key, one PC${price ? ', one payment' : ''}.</p>
       <label class="key-in"><span>Already bought a key? Enter it:</span>
-        <input id="keyInput" type="text" autocomplete="off" spellcheck="false" placeholder="ASTRO-XXXXX-XXXXX-XXXXX" value="${esc((LIC().key||''))}">
+        <input id="keyInput" type="text" autocomplete="off" spellcheck="false" placeholder="ASTRO-XXXXX-XXXXX-XXXXX" value="">
       </label>
       <div id="keyErr" class="key-err"></div>
     </div>
-    <div class="dialog-f"><button class="btn ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button><span class="spacer"></span><button class="btn secondary" data-close type="button">Not now</button><button class="btn primary" data-act="activateKey" data-autofocus type="button">${ico('check')}Activate</button></div>`);
-  const inp = $('#keyInput'); if (inp) { inp.focus(); inp.addEventListener('keydown', e => { if (e.key === 'Enter') doActivate(); }); }
+    <div class="dialog-f"><button class="btn quiet" data-close type="button">Not now</button><span class="spacer"></span><button class="btn secondary" data-act="activateKey" type="button">${ico('check')}Activate key</button><button class="btn primary lg" data-act="buyKey" data-autofocus type="button">${ico('ext')}${price ? `Get a key · ${esc(price)}` : 'Get a key'}</button></div>`);
+  const inp = $('#keyInput'); if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') doActivate(); });
+  if (!S.shop && S.data && S.data.server) api('shopInfo').then(r => { S.shop = r || {}; if (S.shop.priceShort && $('#keyInput') && !$('#keyInput').value) showUpgrade(); }).catch(() => { S.shop = {}; });
+}
+// At most once a day, free users see the upgrade window shortly after the app opens.
+function maybeDailyUpsell() {
+  if (proUnlocked() || !LIC().required) return;
+  const today = new Date().toDateString();
+  if (prefGet('sg-upsell-day') === today) return;
+  if (paidStats().locked === 0) return;
+  prefSet('sg-upsell-day', today);
+  if ($('#modal').hidden) showUpgrade();
 }
 async function doActivate() {
   const inp = $('#keyInput'), err = $('#keyErr');
@@ -810,9 +852,7 @@ async function doActivate() {
       closeModal();
       S.data.license = r;
       toast('Unlocked! Thanks for supporting AstroSpeed.', 'ok', 5000);
-      const nd = await api('init').catch(() => null);
-      if (nd) { S.data = Object.assign(S.data, { catalog: nd.catalog, license: nd.license }); }
-      renderNav(); rerenderView();
+      await reloadCatalog(); // the real names and details of the paid tweaks arrive now
     } else { err.textContent = (r && r.error) || 'That key didn\'t work.'; }
   } catch (e) { err.textContent = e.message || 'Couldn\'t reach the server.'; }
   if (btn) { btn.disabled = false; btn.innerHTML = `${ico('check')}Activate`; }
@@ -1063,6 +1103,7 @@ function rowHTML(t) {
     : s === 'reset' ? `<span class="state-reset">${esc(why || 'Changed back since you applied it')}</span>`
     : s === 'na' ? `<span class="state-na">${esc(why || 'Not available')}</span>` : '';
   const lk = locked(t);
+  if (t.redacted) return redactedRowHTML(t);
   return `
   <div class="row${s === 'na' ? ' na' : ''}${lk ? ' locked' : ''}" data-row="${t.id}">
     ${lk ? `<button class="prolock" data-act="upgrade" type="button" aria-label="Unlock with a key" title="Unlock with a key">${ico('lock')}</button>`
@@ -1085,6 +1126,35 @@ function rowHTML(t) {
   </div>`;
 }
 
+// A locked tweak: the real name and details never reach the window (the app sends filler text),
+// and what's shown is blurred so it can't be read or copied.
+function redactedRowHTML(t) {
+  return `
+  <div class="row locked redacted" data-row="${t.id}" data-act="upgrade" role="button" tabindex="0" aria-label="Locked tweak. Unlock with a key">
+    <button class="prolock" data-act="upgrade" type="button" aria-label="Unlock with a key" title="Unlock with a key">${ico('lock')}</button>
+    <div class="title"><span class="blur" aria-hidden="true">${esc(t.title)}</span></div>
+    <div></div>
+    <div class="desc"><span class="blur" aria-hidden="true">${esc(t.desc)}</span></div>
+    <div class="benefit">${ico('spark')}<span class="blur" aria-hidden="true">${esc(t.benefit)}</span></div>
+    <div class="meta">
+      <span><span class="impact l${t.impact}"><i></i><i></i><i></i></span> ${impactWord[t.impact]} impact</span>
+      <span class="pro-tag">${ico('lock')}Paid tweak</span>
+      <span class="unlock-hint">Unlock to see and apply it</span>
+    </div>
+  </div>`;
+}
+
+function lockBanner(list, where) {
+  const lk = list.filter(t => locked(t) && avail(t.id));
+  if (!lk.length) return '';
+  const hi = lk.filter(t => t.impact >= 3).length;
+  return `<div class="paybar">
+    <span class="pb-ico">${ico('lock')}</span>
+    <div class="pb-t"><b>${lk.length} of ${availCount(list)} tweaks ${esc(where)} are locked</b><small>${hi ? `${plural(hi, 'is a high-impact fix', 'are high-impact fixes')}. ` : ''}The free version can't see or apply them.</small></div>
+    <button class="btn primary" data-act="upgrade" type="button">${ico('lock')}Unlock all</button>
+  </div>`;
+}
+
 function groupsHTML(list, single) {
   const groups = [];
   list.forEach(t => {
@@ -1102,11 +1172,13 @@ function groupsHTML(list, single) {
 function viewCategory(c) {
   let list = catTweaks(c.id);
   const a = appliedCount(list), n = availCount(list);
-  const pend = list.filter(t => t.profile > 0 && avail(t.id) && !isOn(t.id)).length;
+  const pend = list.filter(t => t.profile > 0 && avail(t.id) && !isOn(t.id) && !locked(t)).length;
+  const banner = lockBanner(list, 'in this section');
   const undoable = list.filter(t => st(t.id) === 'on' || st(t.id) === 'reset').length;
   if (S.filter === 'off') list = list.filter(t => !isOn(t.id));
   if (S.filter === 'on') list = list.filter(t => isOn(t.id));
   return `
+    ${banner}
     ${categoryIntro(c.id)}
     <div class="toolbar">
       <div class="seg" role="tablist">
@@ -1195,6 +1267,43 @@ function viewSearch() {
 }
 
 // ───────────────────────── tools ─────────────────────────
+// Booster, cleaner and startup manager need a key. The scan still runs, so the lock shows
+// what AstroSpeed actually found on this PC.
+function toolTeaser(page) {
+  if (page === 'cleaner') {
+    if (!S.clean) return 'Scanning for junk files…';
+    const tot = S.clean.reduce((a, b) => a + (b.bytes || 0), 0);
+    return tot > 0 ? `AstroSpeed found <b>${fmtBytes(tot)}</b> of temp files and caches on this PC.` : 'Clear temp files, caches and leftovers in one click.';
+  }
+  if (page === 'booster') {
+    const b = S.booster, apps = S.bgApps || [];
+    const mb = apps.reduce((a, x) => a + (x.memMB || 0), 0);
+    const bits = [];
+    if (b && b.standbyMB > 0) bits.push(`<b>${fmtMB(b.standbyMB)}</b> is stuck in Windows' standby memory`);
+    if (apps.length) bits.push(`<b>${plural(apps.length, 'background app')}</b> ${apps.length === 1 ? 'is' : 'are'} using <b>${fmtMB(mb)}</b>`);
+    return bits.length ? `Right now ${bits.join(' and ')}.` : 'Clear memory, tighten the timer and close background apps before every match.';
+  }
+  if (page === 'startup') {
+    if (!S.startup) return 'Checking what starts with Windows…';
+    const n = S.startup.filter(x => x.enabled).length;
+    return `<b>${plural(n, 'app')}</b> start${n === 1 ? 's' : ''} with Windows on this PC.`;
+  }
+  return '';
+}
+function toolPaywall(page, inner) {
+  return `<div class="pw-wrap">
+    <div class="pw-under" aria-hidden="true" inert>${inner}</div>
+    <div class="pw-card panel spot">
+      <span class="pw-lock">${ico('lock')}</span>
+      <div class="eyebrow">Paid feature</div>
+      <h2>${esc(paidToolPages[page])} needs a key</h2>
+      <p class="pw-fact">${toolTeaser(page)}</p>
+      <p class="muted small">Unlock it, plus every tweak in AstroSpeed, with one key.</p>
+      <div class="actions" style="justify-content:center"><button class="btn primary lg" data-act="upgrade" type="button">${ico('lock')}Unlock the full version</button></div>
+    </div>
+  </div>`;
+}
+
 function viewBooster() {
   const b = S.booster;
   const apps = S.bgApps;
@@ -1433,6 +1542,7 @@ function openOptimize() {
         ${card(1, 'Recommended', rec, ['Safe on any PC, desktop or laptop', 'Power plan, Game DVR off, network power saving off, Discord QoS, telemetry and background noise', 'Nothing that changes how Windows looks or works day to day'])}
         ${card(2, 'Competitive', comp, ['Everything in Recommended', 'Adds high priority for your games, boot timer tweaks, exclusive fullscreen, interrupt moderation off, memory and scheduler tuning', 'Uses a bit more power at idle; a few take effect after a restart'])}
       </div>
+      ${!proUnlocked() && lockedFor(2).length ? `<div class="paybar compact"><span class="pb-ico">${ico('lock')}</span><div class="pb-t"><b>${lockedFor(2).length} fixes are locked</b><small>The free version only applies a few sample tweaks. A key adds the rest.</small></div><button class="btn sm primary" data-act="upgrade" type="button">Unlock</button></div>` : ''}
       <label class="optline"><input class="cb" type="checkbox" id="optRestore" checked>Create a System Restore point first (recommended, takes about a minute)</label>
       <p class="dim small" style="margin:10px 0 0">Manual-only tweaks (security trade-offs and appearance) are never included. Your sensitivity and game settings are never touched.</p>
     </div>
@@ -1668,7 +1778,7 @@ document.addEventListener('click', async e => {
       rerenderView(); break;
     }
     case 'rescan': runScan(); break;
-    case 'fixAll': { const ids = [...new Set(checkupItems().filter(i => !i.ok && i.tweak).map(i => i.tweak))].filter(id => byId(id) && st(id) !== 'na'); if (ids.length) { await runJob('apply', { ids }, 'Fixing checkup issues', 'Starting…'); try { S.checkup = await api('checkup'); } catch (err) { /* keep */ } if (S.page === 'checkup') rerenderView(); } break; }
+    case 'fixAll': { const all = [...new Set(checkupItems().filter(i => !i.ok && i.tweak).map(i => i.tweak))].filter(id => byId(id) && st(id) !== 'na'); const ids = all.filter(id => !locked(byId(id))); if (!ids.length && all.length) { showUpgrade(); break; } if (ids.length) { await runJob('apply', { ids }, 'Fixing checkup issues', 'Starting…'); try { S.checkup = await api('checkup'); } catch (err) { /* keep */ } if (S.page === 'checkup') rerenderView(); } break; }
     case 'livePing': { const L = S.livePing; if (L.running) { L.running = false; rerenderView(); } else { L.running = true; L.samples = []; rerenderView(); livePingLoop(); } break; }
     case 'ping': S.pinging = true; rerenderView(); try { S.ping = await api('ping'); } catch (err) { toast(err.message, 'err'); } S.pinging = false; rerenderView(); break;
     case 'flushdns': try { await api('flushDNS'); toast('DNS cache flushed.', 'ok'); } catch (err) { toast(err.message, 'err'); } break;
@@ -1708,7 +1818,7 @@ window.addEventListener('resize', () => {
 // ───────────────────────── boot ─────────────────────────
 $('#view').addEventListener('scroll', updateScrollBar, { passive: true });
 on('hotkeyboost', d => toast(`Boosted${d.game ? ' ' + d.game : ''}: ${Math.max(0, Math.round(d.freedMB))} MB memory freed, timer tightened.`, 'ok', 5000));
-on('license', l => { S.data.license = l; renderNav(); rerenderView(); if (l.needsRevert) enforceTrialEnd(); else if (l.problem && !l.activated) toast(l.problem + ' The app is back on the free version.', 'err', 9000); });
+on('license', l => { const was = proUnlocked(); S.data.license = l; if (was !== proUnlocked()) reloadCatalog(); renderNav(); rerenderView(); if (l.needsRevert) enforceTrialEnd(); else if (l.problem && !l.activated) toast(l.problem + ' The app is back on the free version.', 'err', 9000); });
 // When a trial is over (or its key was removed), undo every paid tweak it applied, then tell the backend.
 let trialEnding = false;
 async function enforceTrialEnd() {
@@ -1754,7 +1864,7 @@ $('#motionBtn').addEventListener('click', () => { applyMotion(document.documentE
     $('#app').classList.add('ready');
     S.splashGone = true;
     if (S.data) { S.anim = true; render(); }
-    if (S.data) { api('drives').then(d => { S.drives = d || []; if (S.page === 'dashboard') rerenderView(); }).catch(() => {}); setTimeout(autoCheckUpdate, 1200); if (LIC().needsRevert) setTimeout(enforceTrialEnd, 900); }
+    if (S.data) { api('drives').then(d => { S.drives = d || []; if (S.page === 'dashboard') rerenderView(); }).catch(() => {}); setTimeout(autoCheckUpdate, 1200); if (LIC().needsRevert) setTimeout(enforceTrialEnd, 900); else setTimeout(maybeDailyUpsell, 2500); if (S.data.server) api('shopInfo').then(r => { S.shop = r || {}; }).catch(() => {}); }
     setTimeout(() => $('#splash').remove(), 1400);
   }, wait);
 })();

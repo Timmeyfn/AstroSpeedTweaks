@@ -249,7 +249,7 @@ tr:last-child td{border-bottom:0}
   function renderChecks(h) {
     if (!h) return;
     var items = [
-      [h.storage ? "ok" : "bad", h.storage ? "Storage connected" : "Storage NOT connected (add the LICENSES binding)"],
+      [h.storage && h.storageRead !== false ? "ok" : "bad", !h.storage ? "Storage NOT connected (add the LICENSES binding)" : h.storageRead === false ? (h.storageError || "Storage isn't working") : "Storage connected"],
       [h.passwordStrong ? "ok" : (h.password ? "bad" : "bad"), h.passwordStrong ? "Password set" : (h.password ? "Password too short (needs " + (h.minPassword || 12) + "+ characters)" : "No ADMIN_PASS set")],
       [h.stripe ? (h.stripeTest ? "warn" : "ok") : "warn", h.stripe ? (h.stripeTest ? "Stripe in TEST mode" : "Stripe connected") : "Payments off (no STRIPE_SECRET_KEY)"],
       [h.webhook ? "ok" : (h.stripe ? "warn" : ""), h.webhook ? "Stripe webhook on" : "Stripe webhook not set (recommended)"]

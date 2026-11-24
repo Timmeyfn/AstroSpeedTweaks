@@ -1,15 +1,26 @@
 AstroSpeed — START HERE
 =======================
 
-Everything now runs from ONE Cloudflare worker: your  astrospeed  worker.
-It is your website, your shop, your key system, your download and your updates.
-You manage all of it from one page:  https://astrospeed.dupelication.workers.dev/admin
+You run TWO Cloudflare workers. Both use the same LICENSES storage.
+
+  astrospeed         https://astrospeed.dupelication.workers.dev
+                     Website, shop, downloads, updates, live tweaks and the admin page.
+                     Paste in:  WEBSITE - astrospeed.js
+
+  rapid-forest-bfb5  https://rapid-forest-bfb5.dupelication.workers.dev
+                     Key hoster ONLY: the app activates and checks keys here.
+                     Its home page just says "AstroSpeed key server is running."
+                     Paste in:  KEY HOSTER - rapid-forest-bfb5.js
+
+Both workers need the LICENSES KV binding and the ADMIN_PASS secret (steps 2 and 3 below).
+You manage everything from:  https://astrospeed.dupelication.workers.dev/admin
 
 
 PART 1 — Put the new server in (10 minutes, once)
 -------------------------------------------------
 1. Cloudflare > Workers & Pages > open  astrospeed  > Edit code.
-   Select everything (Ctrl+A), delete it, paste in  astrospeed-server.js , click Deploy.
+   Select everything (Ctrl+A), delete it, paste in  WEBSITE - astrospeed.js , click Deploy.
+   Do the same in  rapid-forest-bfb5  with  KEY HOSTER - rapid-forest-bfb5.js .
 
 2. Still in the astrospeed worker: Settings > Bindings > Add > KV namespace
       Variable name:  LICENSES
@@ -83,10 +94,15 @@ Settings ........ change the price, currency and support email. The website
 
 TIDYING UP (after Part 1 works)
 -------------------------------
-- rapid-forest-bfb5 (old key manager): leave it running for a few weeks so people on
-  older versions can still check their key, then delete it. It shares the same
-  LICENSES storage, so nothing gets out of sync.
 - astrospeedtweaks (old download): delete it once you've published in the Release tab.
 - GitHub: nothing in the app or website uses it any more. Make the repository
   PRIVATE (GitHub > your repo > Settings > Danger Zone > Change visibility) so people
   can't copy your source code or remove the paywall.
+
+
+IF ACTIVATION SAYS "THE SERVER HAD A PROBLEM"
+---------------------------------------------
+Open https://rapid-forest-bfb5.dupelication.workers.dev/health . The app and the admin page
+now show the exact reason. The usual one on the free Cloudflare plan is the daily storage
+limit (1,000 saves a day); it resets at 8am Perth time. Cloudflare > Storage & Databases >
+KV > LICENSES > Metrics shows how many you've used today.

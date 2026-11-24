@@ -251,7 +251,7 @@ func activateKey(key string) (licenseStatus, error) {
 		if reason == "" {
 			reason = "That key didn't work."
 		}
-		if code >= 500 {
+		if code >= 500 && reason == "That key didn't work." {
 			reason = "The activation server had a problem. Try again in a minute."
 		}
 		return licenseStatusNow(), errors.New(reason)

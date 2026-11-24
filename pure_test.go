@@ -40,3 +40,30 @@ func TestStickyKeysBitOnlyClearsShortcut(t *testing.T) {
 		}
 	}
 }
+
+func TestRedact(t *testing.T) {
+	u := redactTweak(tweakUI{Tweak: Tweak{ID: "nagle", Title: "Turn off Nagle", Desc: "Sends small packets now", Benefit: "Lower ping", Note: "x", Actions: []Action{RegD(HKLM, `a`, "b", 1)}}, Changes: []string{"Set a"}})
+	if u.Title == "Turn off Nagle" || len(u.Title) != len("Turn off Nagle") || u.Changes != nil || u.Actions != nil || u.Note != "" || !u.Redacted {
+		t.Fatalf("not redacted: %+v", u)
+	}
+}
+
+func TestPaidTool(t *testing.T) {
+	cases := []struct {
+		m, a string
+		want bool
+	}{
+		{"cleanRun", `{"ids":["x"]}`, true},
+		{"cleanScan", ``, false},
+		{"setAutoBoost", `{"on":true}`, true},
+		{"setAutoBoost", `{"on":false}`, false},
+		{"setSetting", `{"key":"hotkey","on":true}`, true},
+		{"setSetting", `{"key":"startup","on":true}`, false},
+		{"revert", `{"ids":["x"]}`, false},
+	}
+	for _, c := range cases {
+		if got := paidTool(c.m, []byte(c.a)); got != c.want {
+			t.Errorf("%s %s = %v", c.m, c.a, got)
+		}
+	}
+}

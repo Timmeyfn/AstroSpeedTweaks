@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "1.9.1"
+const AppVersion = "1.9.2"
 
 // versionMarker lets the admin page read the version straight out of an uploaded exe.
 const versionMarker = "ASTROSPEED_VERSION=" + AppVersion + ";"
@@ -125,13 +125,13 @@ func main() {
 	stateMu.Lock()
 	ab := appState.AutoBoost
 	stateMu.Unlock()
-	if ab {
+	if ab && isProUnlocked() {
 		startAutoBoost()
 	}
 	stateMu.Lock()
 	hk := appState.Hotkey
 	stateMu.Unlock()
-	if hk {
+	if hk && isProUnlocked() {
 		if err := setHotkey(true); err != nil {
 			logf("Hotkey: %v", err)
 		}
@@ -269,12 +269,6 @@ func emit(event string, payload interface{}) {
 
 // ───────────────────────── API ─────────────────────────
 
-type tweakUI struct {
-	Tweak
-	Changes []string `json:"changes"`
-	Pro     bool     `json:"pro"`
-}
-
 func catalogByID() map[string]Tweak {
 	m := map[string]Tweak{}
 	for _, t := range Catalog {
@@ -319,6 +313,9 @@ func parseArgs(args json.RawMessage, v interface{}) error {
 }
 
 func handle(method string, args json.RawMessage) (interface{}, error) {
+	if paidTool(method, args) && !isProUnlocked() {
+		return nil, fmt.Errorf("this needs an AstroSpeed key")
+	}
 	switch method {
 	case "init":
 		var tw []tweakUI
@@ -328,6 +325,9 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 				u.Changes = append(u.Changes, a.Describe())
 			}
 			u.Pro = isPro(t)
+			if u.Pro && !isProUnlocked() {
+				u = redactTweak(u) // locked: the real name, details and changes never reach the window
+			}
 			tw = append(tw, u)
 		}
 		n, acts := CatalogStats()
@@ -389,6 +389,8 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		err := createRestorePoint("AstroSpeed Tweaks - manual restore point")
 		return map[string]bool{"ok": err == nil}, err
 
+	case "shopInfo":
+		return shopInfo(), nil
 	case "cleanScan":
 		return cleanerScan(), nil
 	case "cleanRun":
