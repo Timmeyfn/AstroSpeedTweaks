@@ -75,12 +75,10 @@ header.stuck{background:var(--hdr);backdrop-filter:saturate(1.6) blur(18px);-web
 .scene svg.mtn{position:absolute;left:0;right:0;bottom:0;width:100%;height:88%}
 @media(max-width:700px){.scene svg.mtn{height:70%}}
 .scene .m-far,.scene .m-mid,.scene .m-main,.scene .m-fg{will-change:transform}
-.scene .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 70%;opacity:0;transition:opacity 1.4s var(--out);will-change:transform}
-.scene .photo.ok{opacity:1}
 .scene .fade{position:absolute;left:0;right:0;bottom:0;height:42%;background:linear-gradient(180deg,transparent,var(--bg) 92%)}
 .scene .veil{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 42%,rgba(255,255,255,.62),rgba(255,255,255,.25) 55%,transparent 75%)}
 :root[data-theme="dark"] .scene .veil{background:radial-gradient(ellipse 70% 55% at 50% 30%,rgba(11,14,19,.55),transparent 70%)}
-:root[data-theme="dark"] .scene svg.mtn,:root[data-theme="dark"] .scene .photo{filter:brightness(.62) saturate(.85)}
+:root[data-theme="dark"] .scene svg.mtn{filter:brightness(.62) saturate(.85)}
 .snow{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
 .contours{position:absolute;inset:0;z-index:1;opacity:.35;pointer-events:none;background:repeating-radial-gradient(ellipse at 50% 120%,transparent 0 38px,rgba(255,255,255,.55) 39px 40px);mask-image:linear-gradient(180deg,transparent 30%,#000 70%,transparent)}
 .depth{position:absolute;inset:0;z-index:2;pointer-events:none;perspective:900px}
@@ -326,7 +324,6 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
 <g class="m-fg"><polygon points="0.0,824.7 6.2,822.8 12.5,821.5 18.8,819.5 25.0,818.4 31.2,815.1 37.5,812.3 43.8,809.9 50.0,807.7 56.2,806.9 62.5,804.5 68.8,803.3 75.0,799.9 81.2,795.3 87.5,792.4 93.8,790.7 100.0,788.3 106.2,786.5 112.5,784.6 118.8,783.6 125.0,783.0 131.2,779.5 137.5,778.1 143.8,774.6 150.0,771.8 156.2,770.1 162.5,769.2 168.8,766.6 175.0,764.7 181.2,763.2 187.5,761.2 193.8,760.7 200.0,760.7 206.2,761.5 212.5,763.3 218.8,765.7 225.0,769.0 231.2,772.0 237.5,772.9 243.8,774.5 250.0,776.6 256.2,781.4 262.5,784.0 268.8,786.3 275.0,790.1 281.2,792.2 287.5,793.6 293.8,797.2 300.0,800.6 306.2,804.0 312.5,806.4 318.8,809.5 325.0,812.5 331.2,814.9 337.5,815.7 343.8,818.2 350.0,820.4 356.2,821.6 362.5,824.9 368.8,829.1 375.0,832.4 381.2,835.3 387.5,837.7 393.8,841.1 400.0,845.5 406.2,846.8 412.5,847.0 418.8,849.2 425.0,850.0 431.2,851.6 437.5,854.2 443.8,855.7 450.0,858.7 456.2,859.2 462.5,860.6 468.8,863.1 475.0,865.2 481.2,866.5 487.5,868.1 493.8,868.0 500.0,869.9 506.2,871.6 512.5,873.5 518.8,874.0 525.0,874.3 531.2,877.1 537.5,879.5 543.8,881.1 550.0,883.2 556.2,885.2 562.5,885.9 568.8,889.3 575.0,891.8 581.2,892.9 587.5,895.2 593.8,895.9 600.0,897.3 606.2,899.3 612.5,899.3 618.8,899.1 625.0,900.2 631.2,901.3 637.5,902.6 643.8,905.2 650.0,908.6 656.2,909.1 662.5,909.2 668.8,910.5 675.0,910.4 681.2,910.2 687.5,911.7 693.8,910.9 700.0,911.3 706.2,911.7 712.5,914.1 718.8,912.9 725.0,913.5 731.2,914.9 737.5,916.3 743.8,916.1 750.0,915.9 756.2,916.2 762.5,914.5 768.8,913.5 775.0,912.7 781.2,913.3 787.5,913.7 793.8,912.9 800.0,914.2 806.2,914.4 812.5,915.8 818.8,914.5 825.0,914.0 831.2,912.9 837.5,913.0 843.8,914.2 850.0,914.1 856.2,914.1 862.5,914.6 868.8,913.9 875.0,914.9 881.2,914.4 887.5,913.7 893.8,914.0 900.0,915.8 906.2,915.5 912.5,916.6 918.8,916.2 925.0,915.3 931.2,914.9 937.5,915.9 943.8,915.7 950.0,914.2 956.2,914.3 962.5,914.6 968.8,914.7 975.0,916.8 981.2,915.9 987.5,914.1 993.8,914.8 1000.0,913.4 1006.2,912.4 1012.5,910.3 1018.8,909.4 1025.0,906.9 1031.2,905.5 1037.5,902.0 1043.8,898.1 1050.0,895.2 1056.2,892.1 1062.5,889.0 1068.8,887.7 1075.0,885.3 1081.2,881.0 1087.5,877.2 1093.8,874.7 1100.0,870.2 1106.2,867.9 1112.5,865.9 1118.8,862.5 1125.0,861.3 1131.2,858.5 1137.5,857.5 1143.8,856.2 1150.0,855.3 1156.2,851.6 1162.5,850.0 1168.8,846.1 1175.0,841.7 1181.2,841.3 1187.5,838.6 1193.8,837.2 1200.0,833.8 1206.2,832.5 1212.5,829.1 1218.8,824.5 1225.0,821.0 1231.2,817.7 1237.5,815.8 1243.8,811.7 1250.0,809.5 1256.2,807.4 1262.5,803.3 1268.8,798.4 1275.0,795.6 1281.2,792.0 1287.5,790.2 1293.8,788.6 1300.0,786.3 1306.2,785.1 1312.5,781.9 1318.8,779.7 1325.0,777.4 1331.2,773.4 1337.5,771.3 1343.8,767.5 1350.0,765.7 1356.2,763.0 1362.5,758.8 1368.8,755.8 1375.0,752.0 1381.2,748.0 1387.5,744.8 1393.8,744.0 1400.0,740.9 1406.2,737.3 1412.5,734.6 1418.8,729.3 1425.0,725.6 1431.2,723.3 1437.5,718.9 1443.8,715.9 1450.0,714.8 1456.2,717.1 1462.5,720.0 1468.8,722.0 1475.0,725.5 1481.2,729.9 1487.5,733.7 1493.8,736.2 1500.0,738.7 1506.2,741.6 1512.5,745.7 1518.8,749.4 1525.0,752.5 1531.2,756.0 1537.5,761.3 1543.8,765.3 1550.0,767.2 1556.2,770.2 1562.5,771.9 1568.8,774.5 1575.0,778.4 1581.2,780.5 1587.5,782.2 1593.8,783.8 1600.0,786.3 1600,900 0,900" fill="#e9f0f7"/></g>
 <rect width="1600" height="900" fill="url(#mHaze)"/>
 </svg>
-    <img class="photo" id="photo" alt="" decoding="async">
     <div class="veil"></div>
     <div class="fade"></div>
   </div>
@@ -518,8 +515,6 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
 </div></footer>
 <script>
 (function () {
-  // The mountain photo shown behind the hero. If it can't load, the drawn mountains show instead.
-  var HERO_PHOTO = "https://img.magnific.com/free-photo/majestic-snowy-mountain-peaks-clear-blue-sky_84443-72362.jpg?w=1920&q=85";
   var root = document.documentElement;
   var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
   var reduceQ = matchMedia('(prefers-reduced-motion: reduce)');
@@ -548,10 +543,6 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
     $$('.support').forEach(function (s) { if (!c.supportEmail) return; var a = document.createElement('a'); a.href = 'mailto:' + c.supportEmail; a.textContent = s.textContent; a.style.color = 'var(--accent)'; s.replaceWith(a); });
   }).catch(function () {});
 
-  // ── hero photo (falls back to the drawn mountains) ──
-  var photo = $('#photo');
-  photo.onload = function () { photo.classList.add('ok'); $('#credit').textContent = 'Mountain photo: Freepik'; };
-  photo.src = HERO_PHOTO;
 
   // ── kinetic headings: each word rises in ──
   $$('.kin').forEach(function (h) { $$('.kw', h).forEach(function (w, i) { w.style.setProperty('--k', i); w.style.setProperty('--d', (h.dataset.d || 0) + 'ms'); }); });
@@ -622,7 +613,6 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
     hdr.classList.toggle('stuck', y > 16);
     if (motion && y < innerHeight * 1.2) {
       layers.forEach(function (l) { if (l[0]) l[0].style.transform = 'translateY(' + (y * l[1]).toFixed(1) + 'px)'; });
-      photo.style.transform = 'translateY(' + (y * .25).toFixed(1) + 'px) scale(' + (1 + y / 4000) + ')';
     }
     ribV += (y - lastY) * .4; lastY = y;
   }
