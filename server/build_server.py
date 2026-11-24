@@ -19,3 +19,8 @@ for marker, name in pages.items():
 out = here / "astrospeed-server.js"
 out.write_text(js, encoding="utf-8")
 print(f"wrote {out.name}: {len(js):,} bytes")
+# key hoster build: same code, only answers key routes; no website, shop or downloads
+keys = js.replace('const ROLE = "all";', 'const ROLE = "keys";', 1).replace("AstroSpeed server — ONE file for everything.", "AstroSpeed KEY HOSTER (rapid-forest) — keys only.", 1)
+assert 'const ROLE = "keys";' in keys
+(here / "key-hoster.js").write_text(keys, encoding="utf-8")
+print("wrote key-hoster.js")

@@ -20,6 +20,9 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 const SERVER_VERSION = "2.0";
+// "all" = website + shop + keys (astrospeed worker). "keys" = key hoster only (rapid-forest worker).
+const ROLE = "all";
+const KEY_ROUTES = new Set(["/activate", "/check", "/health", "/admin", "/admin/upload"]);
 // Where the app was downloaded from before you upload a version in the admin page.
 const LEGACY_DOWNLOAD = "https://astrospeedtweaks.dupelication.workers.dev/AstroSpeed%20Tweaks.exe";
 const EXE_NAME = "AstroSpeed Tweaks.exe";
@@ -43,6 +46,8 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
+    if (ROLE === "keys" && !KEY_ROUTES.has(path))
+      return new Response("AstroSpeed key server is running.", { headers: { "Content-Type": "text/plain; charset=utf-8", ...CORS } });
     try {
       switch (path) {
         case "/":
