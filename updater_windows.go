@@ -44,9 +44,11 @@ func (p *progressReader) Read(b []byte) (int, error) {
 		if p.total > 0 {
 			pct = int(p.received * 100 / p.total)
 		}
-		emit("updateProgress", map[string]interface{}{
-			"pct": pct, "receivedMB": float64(p.received) / (1 << 20), "totalMB": float64(p.total) / (1 << 20),
-		})
+		ev := map[string]interface{}{"pct": pct, "receivedMB": float64(p.received) / (1 << 20)}
+		if p.total > 0 {
+			ev["totalMB"] = float64(p.total) / (1 << 20)
+		}
+		emit("updateProgress", ev)
 	}
 	return n, err
 }

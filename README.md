@@ -1,12 +1,12 @@
 # AstroSpeed Tweaks
 
-**Adding tweaks:** upload `.bat` files to the [`tweaks`](tweaks) folder, or edit [`astrospeed.json`](astrospeed.json). Every copy of the app picks changes up by itself, no rebuild needed. Guide: `HOW TO ADD ONLINE TWEAKS.txt`.
+**New here? Read `START HERE.txt`.** One Cloudflare worker (`server/astrospeed-server.js`) runs the website, Stripe payments, keys, downloads, updates and live tweaks; you manage it all at `/admin`.
 
 A Windows PC optimizer for gamers: per-game tweaks for 12 games, 150+ reversible tweaks, one-click Optimize, a game booster, a system cleaner, startup manager, Fortnite server ping test and a BIOS checklist.
 
 ## Online pack (add tweaks without rebuilding)
 
-Every copy reads `astrospeed.json` and `tweaks/*.bat` from the GitHub repository in `update-repo.txt`, checks them against the same safety rules, and adds them to the app. See `github-repo-starter/HOW TO ADD ONLINE TWEAKS.txt`. Code: `pack.go` (format, safety checks, .bat converter) and `pack_windows.go` (download, cache, live reload).
+Every copy reads live tweaks (.bat files and an optional astrospeed.json) from your server's /pack, which you edit in the admin page's Live tweaks tab. They're checked against the same safety rules before they show up. Code: `pack.go` (format, safety checks, .bat converter) and `pack_windows.go` (download, cache, live reload).
 
 ## Running it
 
@@ -54,4 +54,4 @@ Font: Manrope, SIL Open Font License (see `ui/fonts`). Not affiliated with Epic 
 
 ## Updates
 
-Put your GitHub repository (`name/repo`) in `update-repo.txt` and rebuild. The app then checks that repository's latest release when it opens and offers the download. See `HOW TO RELEASE AN UPDATE.txt`.
+The app checks `server-url.txt`'s /version.json and updates itself in-app. Publish new versions from the admin page's Release tab. See `START HERE.txt` and `HOW TO RELEASE AN UPDATE.txt`.

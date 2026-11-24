@@ -130,8 +130,8 @@ func makeShortcut(lnkPath, target, workdir string) error {
 	defer syscall.Syscall(vt[2], 1, psl, 0, 0) // Release
 	tp, _ := windows.UTF16PtrFromString(target)
 	wp, _ := windows.UTF16PtrFromString(workdir)
-	syscall.Syscall(vt[20], 2, psl, uintptr(unsafe.Pointer(tp)), 0)  // SetPath
-	syscall.Syscall(vt[9], 2, psl, uintptr(unsafe.Pointer(wp)), 0)   // SetWorkingDirectory
+	syscall.Syscall(vt[20], 2, psl, uintptr(unsafe.Pointer(tp)), 0)           // SetPath
+	syscall.Syscall(vt[9], 2, psl, uintptr(unsafe.Pointer(wp)), 0)            // SetWorkingDirectory
 	syscall.Syscall6(vt[17], 3, psl, uintptr(unsafe.Pointer(tp)), 0, 0, 0, 0) // SetIconLocation
 
 	// QueryInterface for IPersistFile

@@ -1,23 +1,9 @@
-AstroSpeed - releasing an update (all on Cloudflare, no GitHub)
-===============================================================
+Releasing an update
+===================
+1. Build the new exe (run build.bat; remember to raise AppVersion in main.go first).
+2. Open https://astrospeed.dupelication.workers.dev/admin > Release tab.
+3. Pick the new "AstroSpeed Tweaks.exe". The version fills in by itself.
+4. Type what's new > Upload and publish.
 
-How it works:
-  The app checks  https://astrospeed.dupelication.workers.dev/version.json
-  If the version there is higher than the one installed, it shows
-  "AstroSpeed X is ready" -> Update now -> it downloads inside the app with a
-  progress bar, installs itself and restarts. People never leave the app.
-
-To release a new version (Claude normally builds the exe for you):
-
-  1. Upload the new exe to your download worker (astrospeedtweaks) with the
-     SAME name:  AstroSpeed Tweaks.exe   (replace the old one).
-
-  2. Open your website worker (astrospeed) > Edit code. At the top, change:
-        const APP_VERSION = "1.8.0";      <- make this the new number, e.g. "1.8.1"
-        const NOTES = "...";              <- what's new (each line starts with "- ",
-                                             separate lines with \n)
-     Deploy.
-
-That's it. Everyone on an older version gets the in-app update next time they
-open AstroSpeed. The version number in step 2 must match the new exe's version
-and be HIGHER than the last one.
+Everyone with the app gets "Update now" next time they open it, and it installs
+inside the app with a progress bar. The website download switches to the new file.

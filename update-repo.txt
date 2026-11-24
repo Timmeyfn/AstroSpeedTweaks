@@ -1,6 +1,0 @@
-# Put your GitHub repository here as  your-name/your-repo  (one line, no spaces).
-# Example:  tommy123/astrospeed-tweaks
-# Then run build.bat. Every copy built after this checks that repository's
-# Releases page for new versions and offers the update when it opens.
-
-Timmeyfn/AstroSpeedTweaks

@@ -1,0 +1,86 @@
+AstroSpeed — START HERE
+=======================
+
+Everything now runs from ONE Cloudflare worker: your  astrospeed  worker.
+It is your website, your shop, your key system, your download and your updates.
+You manage all of it from one page:  https://astrospeed.dupelication.workers.dev/admin
+
+
+PART 1 — Put the new server in (10 minutes, once)
+-------------------------------------------------
+1. Cloudflare > Workers & Pages > open  astrospeed  > Edit code.
+   Select everything (Ctrl+A), delete it, paste in  astrospeed-server.js , click Deploy.
+
+2. Still in the astrospeed worker: Settings > Bindings > Add > KV namespace
+      Variable name:  LICENSES
+      Namespace:      LICENSES   (the same one your key manager already uses,
+                                  so every key you made before keeps working)
+   Deploy.
+
+3. Settings > Variables and Secrets > Add
+      Type:   Secret        (not "Text", so nobody can read it)
+      Name:   ADMIN_PASS
+      Value:  a password of AT LEAST 10 characters. "1234" will be refused,
+              because anyone who guesses it could make free keys.
+   Deploy.
+
+4. Open  https://astrospeed.dupelication.workers.dev/admin  and sign in.
+   The coloured dots at the top tell you what's set up and what isn't.
+
+5. Release tab > pick  AstroSpeed Tweaks.exe  (from the 1.9.0 zip).
+   The version fills in by itself. Type what's new > Upload and publish.
+   From now on the website's Download button gives out this file.
+
+
+PART 2 — Take payments with Stripe (try it free first)
+------------------------------------------------------
+1. Make an account at  https://stripe.com  (choose Australia). It's free to sign up.
+   Leave it in TEST mode for now (the switch at the top of the Stripe dashboard).
+
+2. Stripe > Developers > API keys > "Secret key" > Reveal > copy it (starts with sk_test_).
+
+3. Cloudflare > astrospeed worker > Settings > Variables and Secrets > Add
+      Type: Secret    Name: STRIPE_SECRET_KEY    Value: the sk_test_... key
+   Deploy.
+
+4. Try it: open your website, click "Get a key", and pay with the test card
+      4242 4242 4242 4242   any future date   any 3 digits
+   You land on a page showing a real key. It also appears in admin > Sales.
+   No real money moves in test mode.
+
+5. Going live: Stripe asks for ID and a bank account (in the account holder's name)
+   before it pays out. Once Stripe says your account is active, switch the dashboard
+   to Live, copy the LIVE secret key (sk_live_...), and replace STRIPE_SECRET_KEY
+   with it. Done — real sales, money goes to your Stripe balance.
+
+Optional backup (recommended once you're live): if a buyer closes the tab straight
+after paying, this makes sure their key is still saved in admin > Sales.
+   Stripe > Developers > Webhooks > Add endpoint
+      URL:     https://astrospeed.dupelication.workers.dev/stripe-webhook
+      Event:   checkout.session.completed
+   Then copy its "Signing secret" (whsec_...) and add it to the worker as a Secret
+   named  STRIPE_WEBHOOK_SECRET .
+
+
+EVERYDAY USE (all in the admin page)
+------------------------------------
+Keys tab ........ make keys for friends, disable a key, "Reset PC" if someone gets
+                  a new computer, search by key or note.
+Sales tab ....... every purchase with the buyer's email and their key. If someone
+                  loses their key, find their email here and send it to them.
+Release tab ..... ship an update: pick the new exe > Upload and publish. Everyone
+                  gets "Update now" inside the app, with a progress bar.
+Live tweaks ..... add .bat files or a message for everyone. No app update needed.
+Settings ........ change the price, currency and support email. The website
+                  updates instantly.
+
+
+TIDYING UP (after Part 1 works)
+-------------------------------
+- rapid-forest-bfb5 (old key manager): leave it running for a few weeks so people on
+  older versions can still check their key, then delete it. It shares the same
+  LICENSES storage, so nothing gets out of sync.
+- astrospeedtweaks (old download): delete it once you've published in the Release tab.
+- GitHub: nothing in the app or website uses it any more. Make the repository
+  PRIVATE (GitHub > your repo > Settings > Danger Zone > Change visibility) so people
+  can't copy your source code or remove the paywall.

@@ -76,7 +76,7 @@ func loadCachedPack() {
 		return
 	}
 	var c packCache
-	if json.Unmarshal(b, &c) != nil || c.Repo != updateRepo() {
+	if json.Unmarshal(b, &c) != nil || c.Repo != serverURL() {
 		return
 	}
 	applyPack(c, false)
@@ -118,7 +118,7 @@ func applyPack(c packCache, live bool) {
 func packStatus() packInfo {
 	packMu.Lock()
 	defer packMu.Unlock()
-	info := packInfo{Repo: updateRepo(), Found: packCached.Found, Tweaks: len(packCur.Tweaks), Games: len(packCur.Games),
+	info := packInfo{Repo: serverURL(), Found: packCached.Found, Tweaks: len(packCur.Tweaks), Games: len(packCur.Games),
 		Sections: len(packCur.Categories), Message: packCur.Message, Problems: packCur.Problems, Images: packCur.Images, Error: packErr}
 	info.Configured = info.Repo != ""
 	if !packChecked.IsZero() {
@@ -147,7 +147,7 @@ var packFetchMu sync.Mutex
 func refreshPack(manual bool) (packInfo, error) {
 	packFetchMu.Lock()
 	defer packFetchMu.Unlock()
-	repo := updateRepo()
+	repo := serverURL()
 	if repo == "" {
 		return packStatus(), nil
 	}
@@ -182,75 +182,38 @@ func refreshPack(manual bool) (packInfo, error) {
 	return packStatus(), nil
 }
 
-func ghGet(url string, limit int64) ([]byte, int, error) {
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("User-Agent", "AstroSpeed-Tweaks/"+AppVersion)
+func fetchPack(server string) (packCache, error) {
+	c := packCache{Repo: server, Bats: map[string]string{}, When: time.Now().Format(time.RFC3339)}
+	req, _ := http.NewRequest("GET", server+"/pack", nil)
+	req.Header.Set("User-Agent", "AstroSpeed/"+AppVersion)
 	req.Header.Set("Cache-Control", "no-cache")
-	if strings.Contains(url, "api.github.com") {
-		req.Header.Set("Accept", "application/vnd.github+json")
-	}
-	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	resp, err := (&http.Client{Timeout: 12 * time.Second}).Do(req)
 	if err != nil {
-		return nil, 0, errors.New("couldn't connect. Check your internet connection")
+		return c, errors.New("couldn't connect. Check your internet connection")
 	}
 	defer resp.Body.Close()
-	b, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
-	if err != nil {
-		return nil, resp.StatusCode, errors.New("the download was cut off")
+	if resp.StatusCode != 200 {
+		return c, fmt.Errorf("the tweak server answered %d", resp.StatusCode)
 	}
-	if int64(len(b)) > limit {
-		return nil, resp.StatusCode, fmt.Errorf("a file is bigger than %d KB", limit>>10)
+	var d struct {
+		Found bool              `json:"found"`
+		JSON  string            `json:"json"`
+		Bats  map[string]string `json:"bats"`
 	}
-	return b, resp.StatusCode, nil
-}
-
-func fetchPack(repo string) (packCache, error) {
-	c := packCache{Repo: repo, Bats: map[string]string{}, When: time.Now().Format(time.RFC3339)}
-	b, code, err := ghGet("https://raw.githubusercontent.com/"+repo+"/HEAD/astrospeed.json?t="+fmt.Sprint(time.Now().Unix()/60), 512<<10)
-	switch {
-	case err != nil && code == 0:
-		return c, err
-	case code == 200:
-		c.JSON, c.Found = string(b), true
-	case code == 404:
-	default:
-		return c, fmt.Errorf("the tweak server answered %d", code)
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 8<<20)).Decode(&d); err != nil {
+		return c, errors.New("couldn't read the live tweaks")
 	}
-
-	b, code, err = ghGet("https://api.github.com/repos/"+repo+"/contents/tweaks", 512<<10)
-	if err == nil && code == 200 {
-		var list []struct {
-			Name string `json:"name"`
-			Type string `json:"type"`
-			Size int    `json:"size"`
-			URL  string `json:"download_url"`
-			SHA  string `json:"sha"`
+	c.Found, c.JSON = d.Found, d.JSON
+	n := 0
+	for name, body := range d.Bats {
+		low := strings.ToLower(name)
+		if !(strings.HasSuffix(low, ".bat") || strings.HasSuffix(low, ".cmd")) || len(body) > 256<<10 {
+			continue
 		}
-		if json.Unmarshal(b, &list) == nil {
-			n := 0
-			for _, f := range list {
-				low := strings.ToLower(f.Name)
-				if f.Type != "file" || !(strings.HasSuffix(low, ".bat") || strings.HasSuffix(low, ".cmd")) || f.Size > 256<<10 || !strings.HasPrefix(f.URL, "https://raw.githubusercontent.com/") {
-					continue
-				}
-				if n++; n > 30 {
-					break
-				}
-				body, code2, err2 := ghGet(f.URL, 256<<10)
-				if err2 != nil || code2 != 200 {
-					return c, fmt.Errorf("couldn't download tweaks/%s", f.Name)
-				}
-				c.Bats[f.Name] = string(body)
-				c.Found = true
-			}
+		if n++; n > 30 {
+			break
 		}
-	} else if code == 403 && c.Found {
-		// GitHub's hourly limit for the folder list: keep the .bat files we already had
-		packMu.Lock()
-		for k, v := range packCached.Bats {
-			c.Bats[k] = v
-		}
-		packMu.Unlock()
+		c.Bats[name] = body
 	}
 
 	h := sha256.New()

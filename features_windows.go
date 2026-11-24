@@ -3,7 +3,6 @@
 package main
 
 import (
-	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,35 +20,13 @@ import (
 
 // ───────────────────────── update checks (self-hosted) ─────────────────────────
 
-// update-url.txt holds the address of a small JSON file on your own server that says
-// what the latest version is, for example:
-//
-//	https://astrospeed.dupelication.workers.dev/version.json
-//
-// Nothing here touches GitHub. Leave it blank to switch update checks off.
-//
-//go:embed update-url.txt
-var updateURLFile string
-
+// The app asks your server (server-url.txt) for /version.json. Nothing here touches GitHub.
 func updateCheckURL() string {
-	for _, ln := range strings.Split(updateURLFile, "\n") {
-		ln = strings.TrimSpace(ln)
-		if ln == "" || strings.HasPrefix(ln, "#") {
-			continue
-		}
-		if strings.HasPrefix(ln, "https://") {
-			return ln
-		}
+	if srv := serverURL(); srv != "" {
+		return srv + "/version.json"
 	}
 	return ""
 }
-
-// updateRepo is still used by the online tweak pack.
-//
-//go:embed update-repo.txt
-var updateRepoFile string
-
-func updateRepo() string { return parseRepo(updateRepoFile) }
 
 type updateInfo struct {
 	Configured bool   `json:"configured"`

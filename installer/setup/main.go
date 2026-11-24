@@ -22,12 +22,12 @@ var appExe []byte
 var uiHTML string
 
 var (
-	user32          = windows.NewLazySystemDLL("user32.dll")
-	procMessageBox  = user32.NewProc("MessageBoxW")
-	shell32         = windows.NewLazySystemDLL("shell32.dll")
-	procShellExec   = shell32.NewProc("ShellExecuteW")
-	procSetAppID    = shell32.NewProc("SetCurrentProcessExplicitAppUserModelID")
-	wv              webview2.WebView
+	user32         = windows.NewLazySystemDLL("user32.dll")
+	procMessageBox = user32.NewProc("MessageBoxW")
+	shell32        = windows.NewLazySystemDLL("shell32.dll")
+	procShellExec  = shell32.NewProc("ShellExecuteW")
+	procSetAppID   = shell32.NewProc("SetCurrentProcessExplicitAppUserModelID")
+	wv             webview2.WebView
 )
 
 func messageBox(text, title string, flags uint32) int {

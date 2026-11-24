@@ -164,7 +164,7 @@
   <a class="lnk" href="#features">Features</a>
   <a class="lnk" href="#pricing">Pricing</a>
   <a class="lnk" href="#faq">FAQ</a>
-  <a class="btn ghost" style="height:42px;font-size:14.5px;padding:0 18px" id="dlTop" href="#download">Download free</a>
+  <a class="btn ghost" style="height:42px;font-size:14.5px;padding:0 18px" id="dlTop" href="/download">Download free</a>
 </div></header>
 
 <section class="hero">
@@ -233,7 +233,7 @@
     <div class="plan pro reveal">
       <span class="tag">FULL VERSION</span>
       <h3>With a key</h3>
-      <div class="amt" id="price">$5 <small>one-time</small></div>
+      <div class="amt" style="white-space:nowrap"><span id="price">$5</span> <small><span id="priceCur">AUD</span> one-time</small></div>
       <div class="note">Locked to your PC · never expires</div>
       <ul>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Everything in Free, plus:</li>
@@ -243,10 +243,10 @@
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Auto-boost & the boost hotkey</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>New live tweaks pushed to the app</li>
       </ul>
-      <a class="btn primary magnet" id="buyBtn" href="#" target="_blank" rel="noopener">Get a key</a>
+      <a class="btn primary magnet" id="buyBtn" href="/buy">Get a key</a>
     </div>
   </div>
-  <p style="text-align:center;color:var(--ink3);font-size:13.5px;margin-top:26px">After you buy, your key is shown and emailed to you. Open AstroSpeed → <b>Settings → Your key</b> → paste it in.</p>
+  <p style="text-align:center;color:var(--ink3);font-size:13.5px;margin-top:26px">Secure checkout by Stripe. Your key appears on screen the moment you pay. Then open AstroSpeed → <b>Free version · Unlock</b> → paste it in.</p>
 </div></section>
 
 <section id="faq"><div class="wrap">
@@ -254,7 +254,8 @@
   <h2 class="reveal">Good to know</h2>
   <div class="faq">
     <details class="reveal"><summary>Is it safe? <span class="plus">+</span></summary><p>Yes. AstroSpeed backs up the exact value of every setting before it changes it, offers to make a Windows restore point, and lets you undo any change. It never touches your mouse sensitivity, your in-game settings, or anti-cheat.</p></details>
-    <details class="reveal"><summary>Does a key work on more than one PC? <span class="plus">+</span></summary><p>No. Each key locks to the first PC that activates it, so it can't be shared. If you get a new PC, get in touch and your key can be moved over.</p></details>
+    <details class="reveal"><summary>Does a key work on more than one PC? <span class="plus">+</span></summary><p>No. Each key locks to the first PC that activates it, so it can't be shared. If you get a new PC, <span class="support">get in touch</span> and your key can be moved over.</p></details>
+    <details class="reveal"><summary>I lost my key. What now? <span class="plus">+</span></summary><p>Go back to the page you saw after paying (the link is in your browser history) or <span class="support">contact support</span> with the email you paid with, and you'll get it again.</p></details>
     <details class="reveal"><summary>Is it a subscription? <span class="plus">+</span></summary><p>No. A key is a one-time purchase and never expires.</p></details>
     <details class="reveal"><summary>Will it get me banned? <span class="plus">+</span></summary><p>No. AstroSpeed only changes Windows settings. It never modifies game files, memory or anything anti-cheat looks at.</p></details>
     <details class="reveal"><summary>What if I don't like it? <span class="plus">+</span></summary><p>The free version lets you try the booster, checkup and safe tweaks before you ever buy a key, so you know what you're getting.</p></details>
@@ -266,7 +267,7 @@
     <div class="eyebrow">Download</div>
     <h2>Ready for more frames?</h2>
     <p class="lead" style="margin-bottom:34px">Free to try, no account needed. Works on Windows 10 and 11.</p>
-    <a class="btn primary magnet" id="dlBtn" href="#" style="margin:0 auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>Download for Windows</a>
+    <a class="btn primary magnet" id="dlBtn" href="/download" style="margin:0 auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>Download for Windows</a>
     <p style="color:var(--ink3);font-size:13.5px;margin-top:18px">First run may show "Windows protected your PC" — click <b>More info → Run anyway</b>. Normal for new indie apps.</p>
   </div>
 </div></section>
@@ -277,15 +278,19 @@
 </div></footer>
 
 <script>
-  // ─── EDIT THESE TWO LINES ───
-  var BUY_LINK = "";   // paste your payment link (Gumroad / Ko-fi / Lemon Squeezy / PayPal). Blank = buttons show "Coming soon".
-  var DOWNLOAD_LINK = "https://astrospeedtweaks.dupelication.workers.dev/AstroSpeed%20Tweaks.exe";
-  // ────────────────────────────
-  var dls = document.querySelectorAll('#dlBtn,#dlTop');
-  if (DOWNLOAD_LINK) { dls.forEach(function(a){ a.href = DOWNLOAD_LINK; a.setAttribute('download',''); }); }
-  else { dls.forEach(function(a){ a.style.opacity = '.6'; a.style.pointerEvents = 'none'; if (a.id === 'dlBtn') a.textContent = 'Coming soon'; }); }
-  var buy = document.getElementById('buyBtn');
-  if (BUY_LINK) { buy.href = BUY_LINK; } else { buy.textContent = "Coming soon"; buy.style.opacity = ".6"; buy.style.pointerEvents = "none"; }
+  // Price, buy button and support email come from your admin page (Settings tab) — nothing to edit here.
+  (function () {
+    var buy = document.getElementById('buyBtn');
+    fetch('/config.json').then(function (r) { return r.json(); }).then(function (c) {
+      if (c.priceShort) document.getElementById('price').textContent = c.priceShort;
+      if (c.currencyCode) document.getElementById('priceCur').textContent = c.currencyCode;
+      if (!c.buyEnabled) { buy.textContent = 'Coming soon'; buy.style.opacity = '.6'; buy.style.pointerEvents = 'none'; buy.removeAttribute('href'); }
+      var sup = document.querySelectorAll('.support');
+      for (var i = 0; i < sup.length; i++) {
+        if (c.supportEmail) { var a = document.createElement('a'); a.href = 'mailto:' + c.supportEmail; a.textContent = sup[i].textContent; a.style.color = 'var(--accent)'; sup[i].replaceWith(a); }
+      }
+    }).catch(function () {});
+  })();
 
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 

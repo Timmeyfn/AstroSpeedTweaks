@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>AstroSpeed control panel</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0B0B0C;--bg2:#121214;--card:#17171A;--card2:#1E1E22;--ink:#F3F1EC;--ink2:#A6A8AE;--ink3:#6B6E74;--line:rgba(255,255,255,.1);--accent:#FF6B3F;--ok:#4FC27E;--warn:#F2B347;--bad:#FF5A6E}
+html,body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,sans-serif;font-size:14px}
+body{padding:24px 16px 60px}
+.wrap{max-width:1120px;margin:0 auto}
+a{color:var(--accent)}
+.hd{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.mk{width:40px;height:40px;border-radius:11px;background:linear-gradient(140deg,#FF3D6E,#FF6B3F);display:grid;place-items:center;flex:none}
+.mk svg{width:22px;height:22px}
+.hd h1{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.hd .sub{color:var(--ink3);font-size:12.5px}
+.hd .sp{flex:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+input,button,select,textarea{font:inherit;color:inherit}
+input,select,textarea{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;color:var(--ink)}
+textarea{min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+button{background:var(--accent);border:0;border-radius:10px;color:#1b0a04;font-weight:800;padding:10px 16px;cursor:pointer;white-space:nowrap}
+button:disabled{opacity:.5;cursor:default}
+button.g{background:var(--card2);color:var(--ink);border:1px solid var(--line);font-weight:700}
+button.sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
+button.dz{background:transparent;color:var(--bad);border:1px solid rgba(255,90,110,.45);font-weight:700}
+label.f{display:block;font-size:12.5px;color:var(--ink2);font-weight:600;margin:14px 0 6px}
+.muted{color:var(--ink3)}
+.small{font-size:12.5px}
+.hide{display:none!important}
+.checks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.chk{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:12.5px;font-weight:600}
+.chk i{width:9px;height:9px;border-radius:50%;background:var(--ink3);flex:none}
+.chk.ok i{background:var(--ok)}.chk.warn i{background:var(--warn)}.chk.bad i{background:var(--bad)}
+.login{max-width:400px;margin:6vh auto 0}
+.login h2{font-size:18px;margin-bottom:6px}
+.status{min-height:20px;margin-top:12px;font-size:13px;font-weight:600}
+.status.err{color:var(--bad)}.status.ok{color:var(--ok)}.status.info{color:var(--ink2)}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto}
+.tab{background:none;border:0;border-bottom:2px solid transparent;border-radius:0;color:var(--ink2);padding:10px 14px;font-weight:700}
+.tab.on{color:var(--ink);border-bottom-color:var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.stat b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.stat span{font-size:12px;color:var(--ink3);font-weight:600}
+.stat.a b{color:var(--ok)}.stat.u b{color:var(--warn)}.stat.r b{color:var(--bad)}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.bar .grow{flex:1;min-width:170px;width:auto}
+.made{background:linear-gradient(180deg,rgba(255,107,63,.13),var(--card));border:1px solid rgba(255,107,63,.45);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.made .keys{font-family:ui-monospace,Consolas,monospace;font-size:15px;font-weight:700;line-height:1.9;white-space:pre-wrap;word-break:break-all;margin:8px 0 12px}
+.tbl{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th{text-align:left;padding:11px 12px;color:var(--ink3);font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:13px}
+tr:last-child td{border-bottom:0}
+.k{font-family:ui-monospace,Consolas,monospace;font-weight:700;white-space:nowrap}
+.hw{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--ink2)}
+.tag{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.t-unused{background:rgba(242,179,71,.16);color:var(--warn)}.t-active{background:rgba(79,194,126,.16);color:var(--ok)}.t-revoked{background:rgba(255,90,110,.16);color:var(--bad)}
+.acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.cp{background:none;border:0;color:var(--ink3);padding:2px 5px;font-weight:400}
+.cp:hover{color:var(--accent)}
+.empty{padding:34px;text-align:center;color:var(--ink3)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cur{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
+.cur b{font-size:26px;font-weight:800}
+.prog{height:9px;border-radius:999px;background:var(--card2);overflow:hidden;margin-top:12px}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.batrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.batrow:last-child{border-bottom:0}
+.batrow .n{flex:1;font-family:ui-monospace,Consolas,monospace;font-weight:700;font-size:13px;word-break:break-all}
+.links div{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.links div:last-child{border-bottom:0}
+.links span{width:110px;color:var(--ink3);font-size:12.5px;font-weight:600}
+.links code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;word-break:break-all;flex:1}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 16px;font-weight:600;box-shadow:0 20px 50px -20px #000;z-index:9}
+@media(max-width:760px){.stats{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd">
+    <span class="mk"><svg viewBox="0 0 24 24"><path d="M21 3 3 10.5l7.5 2.5L13 21z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.5 13 4-4" stroke="#fff" stroke-width="1.7"/></svg></span>
+    <div><h1>AstroSpeed control panel</h1><div class="sub">Keys, sales, releases and settings</div></div>
+    <div class="sp"></div>
+    <button class="g sm hide" id="signOut" type="button">Sign out</button>
+  </div>
+
+  <div class="checks" id="checks"><div class="chk"><i></i>Checking setup…</div></div>
+
+  <form id="loginForm" class="login card" autocomplete="on">
+    <h2>Sign in</h2>
+    <p class="muted small">Enter the ADMIN_PASS you set in the worker's Settings.</p>
+    <label class="f" for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" autofocus>
+    <button id="go" type="submit" style="width:100%;margin-top:14px">Sign in</button>
+    <div class="status info" id="loginStatus"></div>
+  </form>
+
+  <div id="app" class="hide">
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-tab="keys" type="button">Keys</button>
+      <button class="tab" data-tab="sales" type="button">Sales</button>
+      <button class="tab" data-tab="release" type="button">Release update</button>
+      <button class="tab" data-tab="pack" type="button">Live tweaks</button>
+      <button class="tab" data-tab="settings" type="button">Settings</button>
+    </div>
+
+    <section id="tab-keys">
+      <div class="stats" id="keyStats"></div>
+      <div id="made"></div>
+      <div class="bar">
+        <input id="count" type="number" value="1" min="1" max="50" style="width:80px" title="How many keys">
+        <input id="note" class="grow" placeholder="Note (optional), e.g. who it's for">
+        <button id="gen" type="button">+ Make keys</button>
+      </div>
+      <div class="bar">
+        <input id="search" class="grow" placeholder="Search key, PC or note">
+        <button class="g" id="refreshKeys" type="button">Refresh</button>
+      </div>
+      <div class="tbl"><table><thead><tr><th>Key</th><th>Status</th><th>Note</th><th>PC</th><th>Made</th><th style="text-align:right">Actions</th></tr></thead><tbody id="keyRows"></tbody></table></div>
+    </section>
+
+    <section id="tab-sales" class="hide">
+      <div class="stats" id="saleStats"></div>
+      <div class="tbl"><table><thead><tr><th>Date</th><th>Email</th><th>Paid</th><th>Key</th></tr></thead><tbody id="saleRows"></tbody></table></div>
+      <p class="muted small" style="margin-top:12px">Every Stripe payment makes a key automatically. If a buyer lost theirs, find their email here and send them the key.</p>
+    </section>
+
+    <section id="tab-release" class="hide">
+      <div class="grid2">
+        <div class="card">
+          <h3 style="font-size:15px;margin-bottom:12px">Live version</h3>
+          <div id="relCur" class="muted">Nothing published yet. People download the old file until you publish one here.</div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:15px;margin-bottom:4px">Publish a new version</h3>
+          <p class="muted small">Everyone with the app gets "Update now" next time they open it, and the website download switches to this file.</p>
+          <label class="f" for="relFile">1. Pick the new AstroSpeed Tweaks.exe</label>
+          <input id="relFile" type="file" accept=".exe">
+          <label class="f" for="relVer">2. Version number (fills in by itself)</label>
+          <input id="relVer" placeholder="e.g. 1.9.0">
+          <label class="f" for="relNotes">3. What's new (one change per line)</label>
+          <textarea id="relNotes" placeholder="- Faster boosting&#10;- New game added"></textarea>
+          <button id="publish" type="button" style="width:100%;margin-top:14px">Upload and publish</button>
+          <div class="prog hide" id="relProg"><i id="relBar"></i></div>
+          <div class="status info" id="relStatus"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-pack" class="hide">
+      <div class="grid2">
+        <div class="card">
+          <h3 style="font-size:15px;margin-bottom:4px">Your .bat tweaks</h3>
+          <p class="muted small">Each .bat becomes a switch in the app's Live section for people with a key. No app update needed.</p>
+          <div id="batList" style="margin-top:10px"></div>
+          <label class="f" for="batFiles">Add .bat files</label>
+          <input id="batFiles" type="file" accept=".bat,.cmd" multiple>
+          <details style="margin-top:12px"><summary class="small" style="cursor:pointer;color:var(--ink2)">Or paste one</summary>
+            <label class="f" for="batName">Name</label><input id="batName" placeholder="my_fps_tweaks.bat">
+            <label class="f" for="batText">Contents</label><textarea id="batText" placeholder="reg add ..."></textarea>
+            <button class="g" id="batAdd" type="button" style="margin-top:10px">Add it</button>
+          </details>
+        </div>
+        <div class="card">
+          <h3 style="font-size:15px;margin-bottom:4px">Message to everyone</h3>
+          <p class="muted small">Shown at the top of the app until each person dismisses it. Leave empty for none.</p>
+          <input id="packMsg" maxlength="400" placeholder="e.g. New Fortnite season tweaks added!">
+          <details style="margin-top:14px"><summary class="small" style="cursor:pointer;color:var(--ink2)">Advanced: astrospeed.json</summary>
+            <p class="muted small" style="margin:8px 0">Extra sections, tweaks, games and pictures in the online pack format. Leave empty if you only use .bat files.</p>
+            <textarea id="packJson" style="min-height:180px"></textarea>
+          </details>
+          <button id="packSave" type="button" style="width:100%;margin-top:14px">Save live tweaks</button>
+          <div class="status info" id="packStatus"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-settings" class="hide">
+      <div class="grid2">
+        <div class="card">
+          <h3 style="font-size:15px;margin-bottom:4px">Shop</h3>
+          <label class="f" for="sName">Product name</label><input id="sName">
+          <label class="f" for="sPrice">Price of a key</label><input id="sPrice" type="number" step="0.01" min="0">
+          <label class="f" for="sCur">Currency</label>
+          <select id="sCur"><option value="aud">AUD (Australian dollar)</option><option value="usd">USD (US dollar)</option><option value="nzd">NZD</option><option value="gbp">GBP</option><option value="eur">EUR</option><option value="cad">CAD</option></select>
+          <label class="f" for="sMail">Support email shown on the website (optional)</label><input id="sMail" type="email" placeholder="you@example.com">
+          <button id="saveSettings" type="button" style="width:100%;margin-top:14px">Save</button>
+          <div class="status info" id="setStatus"></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:15px;margin-bottom:10px">Your links</h3>
+          <div class="links" id="links"></div>
+          <h3 style="font-size:15px;margin:18px 0 6px">Payments</h3>
+          <div id="stripeInfo" class="small muted"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var PASS = "";
+  var KEYS = [], SALES = [], PACK = { message: "", json: "", bats: {} }, STATE = {};
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function show(id, on) { $(id).classList.toggle("hide", !on); }
+  function setStatus(id, text, kind) { var e = $(id); e.textContent = text || ""; e.className = "status " + (kind || "info"); }
+  function fmtDate(t) { if (!t) return ""; var d = new Date(t); return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  function money(c, cur) { return ((Number(c) || 0) / 100).toFixed(2) + " " + String(cur || "").toUpperCase(); }
+  function toast(t) { var d = document.createElement("div"); d.className = "toast"; d.textContent = t; document.body.appendChild(d); setTimeout(function () { d.remove(); }, 2600); }
+  function copy(t) { try { navigator.clipboard.writeText(t); toast("Copied"); } catch (e) { window.prompt("Copy this:", t); } }
+  try { PASS = sessionStorage.getItem("asp2") || ""; } catch (e) {}
+
+  function api(action, extra) {
+    var p = new Promise(function (res, rej) {
+      var ctl = window.AbortController ? new AbortController() : null;
+      var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 20000);
+      var body = { pass: PASS, action: action };
+      if (extra) for (var k in extra) body[k] = extra[k];
+      fetch("/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
+        .then(function (r) {
+          return r.text().then(function (t) {
+            clearTimeout(timer);
+            var d;
+            try { d = JSON.parse(t); } catch (e) { return rej(new Error("The server sent something unexpected (HTTP " + r.status + "). Is the newest code deployed?")); }
+            if (!d.ok) { var err = new Error(d.reason || ("HTTP " + r.status)); err.code = d.code; return rej(err); }
+            res(d);
+          });
+        }, function (e) {
+          clearTimeout(timer);
+          rej(new Error(e && e.name === "AbortError" ? "The server took too long to answer." : "Couldn't reach the server. Check your internet."));
+        });
+    });
+    return p;
+  }
+
+  // ── setup checklist (works before signing in) ──
+  function renderChecks(h) {
+    if (!h) return;
+    var items = [
+      [h.storage ? "ok" : "bad", h.storage ? "Storage connected" : "Storage NOT connected (add the LICENSES binding)"],
+      [h.passwordStrong ? "ok" : (h.password ? "bad" : "bad"), h.passwordStrong ? "Password set" : (h.password ? "Password too short (needs 10+ characters)" : "No ADMIN_PASS set")],
+      [h.stripe ? (h.stripeTest ? "warn" : "ok") : "warn", h.stripe ? (h.stripeTest ? "Stripe in TEST mode" : "Stripe connected") : "Payments off (no STRIPE_SECRET_KEY)"],
+      [h.webhook ? "ok" : "", h.webhook ? "Stripe backup webhook on" : "Stripe webhook (optional)"]
+    ];
+    $("checks").innerHTML = items.map(function (i) { return '<div class="chk ' + i[0] + '"><i></i>' + esc(i[1]) + "</div>"; }).join("");
+  }
+  fetch("/health").then(function (r) { return r.json(); }).then(function (h) { STATE.health = h; renderChecks(h); })
+    .catch(function () { $("checks").innerHTML = '<div class="chk bad"><i></i>Couldn’t reach the server</div>'; });
+
+  // ── sign in ──
+  function signedIn(d) {
+    STATE.health = d.health; STATE.settings = d.settings; STATE.release = d.release;
+    renderChecks(d.health);
+    show("loginForm", false); show("app", true); show("signOut", true);
+    try { sessionStorage.setItem("asp2", PASS); } catch (e) {}
+    fillSettings(); renderRelease(); renderLinks();
+    loadKeys(); loadSales(); loadPack();
+  }
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    PASS = $("pw").value;
+    if (!PASS) { setStatus("loginStatus", "Type your password first.", "err"); return; }
+    $("go").disabled = true;
+    setStatus("loginStatus", "Checking…", "info");
+    api("login").then(function (d) { setStatus("loginStatus", "", "info"); signedIn(d); })
+      .catch(function (err) { setStatus("loginStatus", err.message, "err"); })
+      .then(function () { $("go").disabled = false; });
+  });
+  $("signOut").addEventListener("click", function () { try { sessionStorage.removeItem("asp2"); } catch (e) {} location.reload(); });
+  if (PASS) {
+    setStatus("loginStatus", "Signing you back in…", "info");
+    api("login").then(signedIn).catch(function (err) { PASS = ""; setStatus("loginStatus", err.message, "err"); });
+  }
+
+  // ── tabs ──
+  [].forEach.call(document.querySelectorAll(".tab"), function (b) {
+    b.addEventListener("click", function () {
+      [].forEach.call(document.querySelectorAll(".tab"), function (x) { x.classList.toggle("on", x === b); });
+      ["keys", "sales", "release", "pack", "settings"].forEach(function (t) { show("tab-" + t, t === b.getAttribute("data-tab")); });
+    });
+  });
+
+  // ── keys ──
+  function statusOf(r) { return r.revoked ? "revoked" : (r.hwid ? "active" : "unused"); }
+  var FRESH = {}; // keys made in this session, shown even before Cloudflare's list catches up
+  function loadKeys() { return api("keys").then(function (d) {
+    KEYS = d.rows || [];
+    var have = {}; KEYS.forEach(function (k) { have[k.key] = 1; });
+    Object.keys(FRESH).forEach(function (k) { if (!have[k] && !FRESH[k].deleted) KEYS.unshift(FRESH[k]); });
+    drawKeys(); }).catch(function (e) { $("keyRows").innerHTML = '<tr><td colspan="6" class="empty">' + esc(e.message) + "</td></tr>"; }); }
+  function drawKeys() {
+    var a = 0, u = 0, r = 0;
+    KEYS.forEach(function (k) { var s = statusOf(k); if (s === "active") a++; else if (s === "unused") u++; else r++; });
+    $("keyStats").innerHTML = '<div class="stat"><b>' + KEYS.length + '</b><span>Total keys</span></div><div class="stat a"><b>' + a + '</b><span>Activated</span></div><div class="stat u"><b>' + u + '</b><span>Not used yet</span></div><div class="stat r"><b>' + r + '</b><span>Disabled</span></div>';
+    var q = ($("search").value || "").toLowerCase();
+    var rows = KEYS.filter(function (k) { return !q || (k.key + " " + (k.hwid || "") + " " + (k.note || "")).toLowerCase().indexOf(q) >= 0; });
+    if (!rows.length) { $("keyRows").innerHTML = '<tr><td colspan="6" class="empty">' + (KEYS.length ? "Nothing matches that search." : "No keys yet. Click “+ Make keys”.") + "</td></tr>"; return; }
+    $("keyRows").innerHTML = rows.map(function (k) {
+      var s = statusOf(k), key = esc(k.key);
+      var acts = '<div class="acts">' +
+        (k.revoked ? '<button class="sm g" data-a="enable" data-k="' + key + '" type="button">Enable</button>' : '<button class="sm g" data-a="revoke" data-k="' + key + '" type="button">Disable</button>') +
+        (k.hwid ? '<button class="sm g" data-a="unbind" data-k="' + key + '" type="button" title="Lets the key be activated on a different PC">Reset PC</button>' : "") +
+        '<button class="sm dz" data-a="delete" data-k="' + key + '" type="button">Delete</button></div>';
+      return "<tr><td><span class=\"k\">" + key + '</span><button class="cp" data-cp="' + key + '" type="button" title="Copy">copy</button></td>' +
+        '<td><span class="tag t-' + s + '">' + (s === "unused" ? "not used" : s === "revoked" ? "disabled" : "activated") + "</span></td>" +
+        "<td>" + (k.note ? esc(k.note) : '<span class="muted">—</span>') + (k.source === "stripe" ? ' <span class="tag t-active">sold</span>' : "") + "</td>" +
+        '<td class="hw" title="' + esc(k.hwid || "") + '">' + (k.hwid ? esc(k.hwid.slice(0, 10)) + "…" : '<span class="muted">—</span>') + "</td>" +
+        '<td class="muted small">' + fmtDate(k.createdAt) + "</td><td>" + acts + "</td></tr>";
+    }).join("");
+  }
+  $("keyRows").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    if (b.hasAttribute("data-cp")) { copy(b.getAttribute("data-cp")); return; }
+    var key = b.getAttribute("data-k"), a = b.getAttribute("data-a");
+    if (!a) return;
+    if (a === "delete" && !confirm("Delete " + key + " for good? The app stops working on that PC.")) return;
+    if (a === "revoke" && !confirm("Disable " + key + "? The app locks on that PC next time it opens.")) return;
+    if (a === "unbind" && !confirm("Reset " + key + " so it can be activated on another PC?")) return;
+    b.disabled = true;
+    api(a, { key: key }).then(function () {
+      toast("Done");
+      KEYS.forEach(function (k) { if (k.key !== key) return; if (a === "revoke") k.revoked = true; if (a === "enable") k.revoked = false; if (a === "unbind") k.hwid = null; });
+      if (a === "delete") { KEYS = KEYS.filter(function (k) { return k.key !== key; }); if (FRESH[key]) FRESH[key].deleted = true; }
+      drawKeys();
+    }).catch(function (err) { alert(err.message); b.disabled = false; });
+  });
+  $("search").addEventListener("input", drawKeys);
+  $("refreshKeys").addEventListener("click", loadKeys);
+  $("gen").addEventListener("click", function () {
+    var b = $("gen"); b.disabled = true;
+    api("generate", { count: $("count").value, note: $("note").value }).then(function (d) {
+      var list = d.made.join("\n");
+      d.made.forEach(function (k) { FRESH[k] = { key: k, createdAt: Date.now(), hwid: null, revoked: false, note: $("note").value, source: "admin" }; });
+      $("made").innerHTML = '<div class="made"><b>New key' + (d.made.length > 1 ? "s" : "") + '</b> — copy and send to the person:<div class="keys">' + esc(list) + '</div><button class="sm" id="cpAll" type="button">Copy</button></div>';
+      $("cpAll").addEventListener("click", function () { copy(list); });
+      $("note").value = "";
+      return loadKeys();
+    }).catch(function (err) { alert(err.message); }).then(function () { b.disabled = false; });
+  });
+
+  // ── sales ──
+  function loadSales() {
+    return api("sales").then(function (d) {
+      SALES = d.rows || [];
+      var total = {}, n = SALES.length;
+      SALES.forEach(function (s) { var c = (s.currency || "").toUpperCase(); total[c] = (total[c] || 0) + (s.amount || 0); });
+      var rev = Object.keys(total).map(function (c) { return ((total[c] || 0) / 100).toFixed(2) + " " + c; }).join(" + ") || "0.00";
+      var last = SALES[0] ? fmtDate(SALES[0].createdAt) : "—";
+      $("saleStats").innerHTML = '<div class="stat"><b>' + n + '</b><span>Keys sold</span></div><div class="stat a" style="grid-column:span 2"><b>' + esc(rev) + '</b><span>Total taken (before Stripe fees)</span></div><div class="stat"><b style="font-size:15px;padding-top:8px">' + esc(last) + "</b><span>Last sale</span></div>";
+      $("saleRows").innerHTML = SALES.length ? SALES.map(function (s) {
+        return '<tr><td class="small">' + fmtDate(s.createdAt) + "</td><td>" + esc(s.email || "—") + "</td><td>" + money(s.amount, s.currency) + '</td><td><span class="k">' + esc(s.key) + '</span><button class="cp" data-cp="' + esc(s.key) + '" type="button">copy</button></td></tr>';
+      }).join("") : '<tr><td colspan="4" class="empty">No sales yet.</td></tr>';
+    }).catch(function (e) { $("saleRows").innerHTML = '<tr><td colspan="4" class="empty">' + esc(e.message) + "</td></tr>"; });
+  }
+  $("saleRows").addEventListener("click", function (e) { var b = e.target.closest("[data-cp]"); if (b) copy(b.getAttribute("data-cp")); });
+
+  // ── release ──
+  function renderRelease() {
+    var r = STATE.release;
+    if (!r) { $("relCur").className = "muted"; $("relCur").innerHTML = 'Nothing published yet. People download the old file until you publish one here.'; return; }
+    $("relCur").className = "";
+    $("relCur").innerHTML = '<div class="cur"><b>' + esc(r.version) + '</b><span class="muted">' + (r.size ? (r.size / 1048576).toFixed(1) + " MB · " : "") + "published " + esc(fmtDate(r.publishedAt)) + "</span></div>" +
+      (r.notes ? '<pre style="white-space:pre-wrap;margin-top:12px;color:var(--ink2);font-family:inherit">' + esc(r.notes) + "</pre>" : "") +
+      '<p style="margin-top:12px"><a href="/download" target="_blank" rel="noopener">Test the download</a></p>';
+    var parts = String(r.version).split(".").map(Number);
+    if (parts.length >= 3 && !$("relVer").value) { parts[2] = (parts[2] || 0) + 1; $("relVer").placeholder = "e.g. " + parts.join("."); }
+  }
+  function newer(a, b) { var x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (var i = 0; i < Math.max(x.length, y.length); i++) { var p = x[i] || 0, q = y[i] || 0; if (p !== q) return p > q; } return false; }
+  $("relFile").addEventListener("change", function () {
+    var f = $("relFile").files[0]; if (!f) return;
+    setStatus("relStatus", "Reading the file…", "info");
+    var rd = new FileReader();
+    rd.onload = function () {
+      var bytes = new Uint8Array(rd.result), mark = "ASTROSPEED_VERSION=", txt = "";
+      // scan as plain bytes (fast, no decoding of 8 MB)
+      var m0 = mark.charCodeAt(0);
+      for (var i = 0; i < bytes.length - 40; i++) {
+        if (bytes[i] !== m0) continue;
+        var ok = true; for (var j = 1; j < mark.length; j++) if (bytes[i + j] !== mark.charCodeAt(j)) { ok = false; break; }
+        if (!ok) continue;
+        for (var e = i + mark.length; e < i + mark.length + 20 && bytes[e] !== 59; e++) txt += String.fromCharCode(bytes[e]);
+        break;
+      }
+      if (bytes[0] !== 0x4d || bytes[1] !== 0x5a) { setStatus("relStatus", "That isn't a Windows .exe file.", "err"); return; }
+      if (/^\d+(\.\d+){1,3}$/.test(txt)) {
+        $("relVer").value = txt;
+        if (STATE.release && !newer(txt, STATE.release.version)) setStatus("relStatus", "This file is version " + txt + ", which isn't newer than the live " + STATE.release.version + ". Pick the new build.", "err");
+        else setStatus("relStatus", "Found version " + txt + " in the file. Add what's new, then click Upload and publish.", "ok");
+      } else setStatus("relStatus", "Couldn't read a version from this file (it may be older than 1.9.0). Type the version yourself.", "info");
+    };
+    rd.readAsArrayBuffer(f);
+  });
+
+  $("publish").addEventListener("click", function () {
+    var ver = $("relVer").value.trim().replace(/^v/i, ""), f = $("relFile").files[0], notes = $("relNotes").value;
+    if (!/^\d+(\.\d+){1,3}$/.test(ver)) { setStatus("relStatus", "Type a version number like 1.9.0", "err"); return; }
+    if (STATE.release && !newer(ver, STATE.release.version)) { setStatus("relStatus", "The version has to be higher than " + STATE.release.version + " or nobody gets the update.", "err"); return; }
+    if (!f) { setStatus("relStatus", "Choose the .exe file first.", "err"); return; }
+    if (!/\.exe$/i.test(f.name)) { setStatus("relStatus", "That isn't an .exe file.", "err"); return; }
+    if (!confirm("Publish version " + ver + "? Everyone with the app will be offered this update.")) return;
+    var b = $("publish"); b.disabled = true; show("relProg", true); $("relBar").style.width = "0%";
+    setStatus("relStatus", "Uploading…", "info");
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/admin/upload?version=" + encodeURIComponent(ver));
+    xhr.setRequestHeader("X-Admin-Pass", PASS);
+    xhr.upload.onprogress = function (e) { if (e.lengthComputable) { var p = Math.round(e.loaded / e.total * 100); $("relBar").style.width = p + "%"; setStatus("relStatus", "Uploading… " + p + "%", "info"); } };
+    xhr.onerror = function () { b.disabled = false; setStatus("relStatus", "Upload failed. Check your internet and try again.", "err"); };
+    xhr.onload = function () {
+      var d = {}; try { d = JSON.parse(xhr.responseText); } catch (e) {}
+      if (!d.ok) { b.disabled = false; setStatus("relStatus", d.reason || ("Upload failed (HTTP " + xhr.status + ")"), "err"); return; }
+      setStatus("relStatus", "Publishing…", "info");
+      api("publish", { version: ver, notes: notes }).then(function (r) {
+        $("relVer").value = ""; $("relNotes").value = ""; $("relFile").value = "";
+        STATE.release = r.release; renderRelease(); renderLinks();
+        setStatus("relStatus", "Version " + ver + " is live. The app will offer it to everyone.", "ok");
+      }).catch(function (err) { setStatus("relStatus", err.message, "err"); }).then(function () { b.disabled = false; });
+    };
+    xhr.send(f);
+  });
+
+  // ── live tweaks ──
+  function loadPack() { return api("getPack").then(function (d) { PACK = d.pack || PACK; PACK.bats = PACK.bats || {}; $("packMsg").value = PACK.message || ""; $("packJson").value = PACK.json || ""; drawBats(); }).catch(function () {}); }
+  function drawBats() {
+    var names = Object.keys(PACK.bats).sort();
+    $("batList").innerHTML = names.length ? names.map(function (n) { return '<div class="batrow"><span class="n">' + esc(n) + '</span><span class="muted small">' + Math.ceil((PACK.bats[n] || "").length / 1024) + ' KB</span><button class="sm dz" data-del="' + esc(n) + '" type="button">Remove</button></div>'; }).join("") : '<p class="muted small">No .bat tweaks yet.</p>';
+  }
+  $("batList").addEventListener("click", function (e) { var b = e.target.closest("[data-del]"); if (!b) return; delete PACK.bats[b.getAttribute("data-del")]; drawBats(); setStatus("packStatus", "Removed. Click Save to make it live.", "info"); });
+  $("batFiles").addEventListener("change", function () {
+    var files = [].slice.call($("batFiles").files), left = files.length;
+    files.forEach(function (f) { var rd = new FileReader(); rd.onload = function () { PACK.bats[f.name] = String(rd.result || ""); if (--left === 0) { drawBats(); setStatus("packStatus", files.length + " file(s) added. Click Save to make them live.", "info"); } }; rd.readAsText(f); });
+    $("batFiles").value = "";
+  });
+  $("batAdd").addEventListener("click", function () {
+    var n = $("batName").value.trim(), t = $("batText").value;
+    if (!n || !t.trim()) { setStatus("packStatus", "Give it a name and paste the contents.", "err"); return; }
+    if (!/\.(bat|cmd)$/i.test(n)) n += ".bat";
+    PACK.bats[n] = t; $("batName").value = ""; $("batText").value = ""; drawBats();
+    setStatus("packStatus", n + " added. Click Save to make it live.", "info");
+  });
+  $("packSave").addEventListener("click", function () {
+    var b = $("packSave"); b.disabled = true; setStatus("packStatus", "Saving…", "info");
+    api("savePack", { pack: { message: $("packMsg").value, json: $("packJson").value, bats: PACK.bats } }).then(function (d) {
+      PACK = d.pack; drawBats(); setStatus("packStatus", "Saved. The app picks this up within 30 minutes (or right away with Check now).", "ok");
+    }).catch(function (err) { setStatus("packStatus", err.message, "err"); }).then(function () { b.disabled = false; });
+  });
+
+  // ── settings ──
+  function fillSettings() {
+    var s = STATE.settings || {};
+    $("sName").value = s.productName || ""; $("sPrice").value = ((Number(s.price) || 0) / 100).toFixed(2);
+    $("sCur").value = s.currency || "aud"; $("sMail").value = s.supportEmail || "";
+    var h = STATE.health || {};
+    $("stripeInfo").innerHTML = h.stripe
+      ? (h.stripeTest ? "Stripe is connected in <b>test mode</b>: no real money moves. Pay with card 4242 4242 4242 4242, any future date and any CVC to try it. Swap to your live key (sk_live_…) when you're ready." : "Stripe is connected. Buyers pay on Stripe and get their key on screen straight away. Money goes to your Stripe balance.")
+      : "Payments are off. To switch them on, add your Stripe secret key to the worker as a Secret named <b>STRIPE_SECRET_KEY</b> (the START HERE guide walks you through it).";
+  }
+  function renderLinks() {
+    var o = location.origin;
+    var rows = [["Website", o + "/"], ["Buy a key", o + "/buy"], ["Download", o + "/download"], ["Admin", o + "/admin"]];
+    $("links").innerHTML = rows.map(function (r) { return "<div><span>" + r[0] + "</span><code>" + esc(r[1]) + '</code><button class="cp" data-cp="' + esc(r[1]) + '" type="button">copy</button></div>'; }).join("");
+  }
+  $("links").addEventListener("click", function (e) { var b = e.target.closest("[data-cp]"); if (b) copy(b.getAttribute("data-cp")); });
+  $("saveSettings").addEventListener("click", function () {
+    var price = Math.round(parseFloat($("sPrice").value || "0") * 100);
+    var b = $("saveSettings"); b.disabled = true; setStatus("setStatus", "Saving…", "info");
+    api("saveSettings", { settings: { productName: $("sName").value, price: price, currency: $("sCur").value, supportEmail: $("sMail").value } })
+      .then(function (d) { STATE.settings = d.settings; fillSettings(); setStatus("setStatus", "Saved. The website shows the new price straight away.", "ok"); })
+      .catch(function (err) { setStatus("setStatus", err.message, "err"); }).then(function () { b.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

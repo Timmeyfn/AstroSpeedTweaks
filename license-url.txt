@@ -1,2 +1,0 @@
-# Your Cloudflare key server:
-https://rapid-forest-bfb5.dupelication.workers.dev

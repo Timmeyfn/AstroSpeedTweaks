@@ -20,7 +20,13 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "1.8.0"
+const AppVersion = "1.9.0"
+
+// versionMarker lets the admin page read the version straight out of an uploaded exe.
+const versionMarker = "ASTROSPEED_VERSION=" + AppVersion + ";"
+
+// launchedAfterUpdate is true when this copy was started by the in-app updater.
+var launchedAfterUpdate bool
 
 //go:embed ui/dist/index.html
 var indexHTML string
@@ -68,6 +74,7 @@ func main() {
 	for _, a := range os.Args[1:] {
 		if a == "--after-update" {
 			afterUpdate = true
+			launchedAfterUpdate = true
 		}
 	}
 	for tries := 0; ; tries++ {
@@ -108,8 +115,10 @@ func main() {
 		curEnv.Games["fortnite"] = curEnv.FortniteExe
 	}
 	lastProbe = time.Now()
+	loadLicense()
 	loadCachedPack()
-	go refreshLicense()
+	go refreshLicenseOnline()
+	logf("%s", versionMarker)
 	startGameDetection()
 	go refreshPackLoop()
 	stateMu.Lock()
@@ -330,7 +339,7 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		autoBoost, hotkey, autoUpdate := appState.AutoBoost, appState.Hotkey, !appState.NoAutoUpdate
 		stateMu.Unlock()
 		return map[string]interface{}{
-			"version": AppVersion, "license": refreshLicense(), "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "updateRepo": updateRepo(), "updateConfigured": updateCheckURL() != "", "pack": packStatus(),
+			"version": AppVersion, "license": licenseStatusNow(), "afterUpdate": launchedAfterUpdate, "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "server": serverURL(), "updateConfigured": updateCheckURL() != "", "pack": packStatus(),
 			"tweakCount": n, "actionCount": acts, "env": getEnv(), "admin": isElevated(),
 			"profile": profile, "totalChanges": total, "lastOptimize": last, "restorePoints": rps,
 			"cleanTargets": cleanTargets, "dataDir": dataDir, "lastCrash": lastCrash,
@@ -481,7 +490,10 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 	case "drives":
 		return drives(), nil
 	case "licenseStatus":
-		return refreshLicense(), nil
+		go refreshLicenseOnline()
+		return licenseStatusNow(), nil
+	case "removeKey":
+		return removeKey(), nil
 	case "activate":
 		var a struct {
 			Key string `json:"key"`

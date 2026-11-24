@@ -1,0 +1,3 @@
+# Your AstroSpeed server (the Cloudflare worker running astrospeed-server.js).
+# Keys, updates, live tweaks and the shop all come from here. Blank = everything free, no updates.
+https://astrospeed.dupelication.workers.dev

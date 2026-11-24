@@ -5,50 +5,50 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
-	_ "embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sys/windows/registry"
 )
 
-// license-url.txt holds the address of your Cloudflare key server, e.g.
+// Keys are checked against your server (server-url.txt). The result is saved locally, tied to this PC,
+// so the app opens instantly and keeps working offline for a while.
 //
-//	https://astrospeed-keys.yourname.workers.dev
-//
-// Leave it blank and the whole app stays free with every feature unlocked.
-//
-//go:embed license-url.txt
-var licenseURLFile string
+// Rules:
+//   - A saved key only counts on the PC it was activated on.
+//   - If the server can't be reached (no internet, server down, misconfigured), the saved key keeps
+//     working for offlineGrace since the last successful check. A server problem never wipes a key.
+//   - Only a clear answer from the server ("disabled", "used on another PC", "invalid") locks it.
 
-func licenseServer() string {
-	for _, ln := range strings.Split(licenseURLFile, "\n") {
-		ln = strings.TrimSpace(ln)
-		if ln == "" || strings.HasPrefix(ln, "#") {
-			continue
-		}
-		if strings.HasPrefix(ln, "https://") {
-			return strings.TrimRight(ln, "/ ")
-		}
-	}
-	return ""
-}
+const offlineGrace = 14 * 24 * time.Hour
 
 type licenseFile struct {
-	Key string `json:"key"`
+	Key    string `json:"key"`
+	HWID   string `json:"hwid,omitempty"`
+	LastOK int64  `json:"lastOK,omitempty"` // unix time of the last successful online check
+	State  string `json:"state,omitempty"`  // "", "disabled", "other_pc", "invalid"
 }
 
 type licenseStatus struct {
-	Required  bool   `json:"required"`  // a key server is configured
-	Activated bool   `json:"activated"` // this PC has a working key
-	Key       string `json:"key"`       // masked
-	Offline   bool   `json:"offline"`   // couldn't reach the server this launch
+	Required  bool   `json:"required"`          // a server is configured, so pro features need a key
+	Activated bool   `json:"activated"`         // pro features are unlocked on this PC
+	Key       string `json:"key"`               // masked
+	Offline   bool   `json:"offline"`           // using the saved result because the server didn't answer
+	Problem   string `json:"problem,omitempty"` // why a saved key stopped working
 }
+
+var (
+	licMu       sync.Mutex
+	licCur      licenseStatus
+	proUnlocked = true
+)
 
 func licensePath() string { return filepath.Join(dataDir, "license.json") }
 
@@ -69,104 +69,172 @@ func hwid() string {
 }
 
 func maskKey(k string) string {
-	k = strings.TrimSpace(k)
-	if len(k) < 5 {
+	k = normalizeKey(k)
+	if len(k) < 7 {
 		return ""
 	}
-	parts := strings.Split(k, "-")
-	if len(parts) > 1 {
-		return parts[0] + strings.Repeat("-•••••", len(parts)-1)
-	}
-	return k[:3] + "•••••"
+	return k[:6] + "•••••-•••••-" + k[len(k)-5:]
 }
 
-func readLicenseKey() string {
-	b, err := os.ReadFile(licensePath())
-	if err != nil {
-		return ""
+func problemText(state string) string {
+	switch state {
+	case "disabled":
+		return "This key has been disabled."
+	case "other_pc":
+		return "This key is activated on a different PC."
+	case "invalid":
+		return "This key isn't valid any more."
 	}
+	return ""
+}
+
+func readLicense() licenseFile {
 	var lf licenseFile
-	if json.Unmarshal(b, &lf) != nil {
-		return ""
+	if b, err := os.ReadFile(licensePath()); err == nil {
+		_ = json.Unmarshal(b, &lf)
 	}
-	return lf.Key
+	return lf
 }
 
-func saveLicenseKey(key string) {
-	b, _ := json.Marshal(licenseFile{Key: key})
-	_ = os.WriteFile(licensePath(), b, 0o644)
+func writeLicense(lf licenseFile) {
+	b, _ := json.Marshal(lf)
+	tmp := licensePath() + ".tmp"
+	if os.WriteFile(tmp, b, 0o644) == nil {
+		_ = os.Rename(tmp, licensePath())
+	}
 }
 
-func postJSON(url string, in interface{}) (map[string]interface{}, error) {
+// evaluate works out the status from the saved file alone (no network).
+func evaluate(lf licenseFile) licenseStatus {
+	if serverURL() == "" {
+		return licenseStatus{Required: false, Activated: true}
+	}
+	st := licenseStatus{Required: true}
+	if lf.Key == "" {
+		return st
+	}
+	st.Key = maskKey(lf.Key)
+	me := hwid()
+	switch {
+	case lf.HWID != "" && lf.HWID != me:
+		st.Problem = "This key was activated on a different PC."
+	case lf.State != "":
+		st.Problem = problemText(lf.State)
+	case lf.LastOK == 0: // saved by an older version: allowed until the first check answers
+		st.Activated = true
+	case time.Since(time.Unix(lf.LastOK, 0)) < offlineGrace:
+		st.Activated = true
+	default:
+		st.Problem = "AstroSpeed needs to go online to confirm your key."
+	}
+	return st
+}
+
+func setLicense(st licenseStatus) (changed bool) {
+	licMu.Lock()
+	defer licMu.Unlock()
+	changed = st != licCur
+	licCur = st
+	proUnlocked = !st.Required || st.Activated
+	return changed
+}
+
+// loadLicense runs at startup, before the window opens. It never touches the network.
+func loadLicense() { setLicense(evaluate(readLicense())) }
+
+func licenseStatusNow() licenseStatus {
+	licMu.Lock()
+	defer licMu.Unlock()
+	return licCur
+}
+
+func postJSON(url string, in interface{}, timeout time.Duration) (map[string]interface{}, int, error) {
 	body, _ := json.Marshal(in)
 	req, _ := http.NewRequest("POST", url, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "AstroSpeed/"+AppVersion)
-	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	resp, err := (&http.Client{Timeout: timeout}).Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer resp.Body.Close()
 	var out map[string]interface{}
-	_ = json.NewDecoder(resp.Body).Decode(&out)
-	return out, nil
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&out); err != nil {
+		return nil, resp.StatusCode, err
+	}
+	return out, resp.StatusCode, nil
 }
 
-// proUnlocked is read by the tweak engine; true when no server is set (all free) or the key checks out.
-var proUnlocked = true
-
-func refreshLicense() licenseStatus {
-	srv := licenseServer()
-	if srv == "" {
-		proUnlocked = true
-		return licenseStatus{Required: false, Activated: true}
+// refreshLicenseOnline asks the server about the saved key and updates the window if anything changed.
+func refreshLicenseOnline() {
+	defer func() { _ = recover() }()
+	srv := serverURL()
+	lf := readLicense()
+	if srv == "" || lf.Key == "" || (lf.HWID != "" && lf.HWID != hwid()) {
+		return
 	}
-	key := readLicenseKey()
-	if key == "" {
-		proUnlocked = false
-		return licenseStatus{Required: true, Activated: false}
+	res, code, err := postJSON(srv+"/check", map[string]string{"key": lf.Key, "hwid": hwid()}, 8*time.Second)
+	st := evaluate(lf)
+	if err != nil || code != 200 || res == nil {
+		// no answer: keep the saved result
+		st.Offline = st.Activated
+		logf("Key check: server didn't answer (%v, HTTP %d); using the saved result", err, code)
+	} else if ok, _ := res["ok"].(bool); ok {
+		lf.HWID, lf.LastOK, lf.State = hwid(), time.Now().Unix(), ""
+		writeLicense(lf)
+		st = evaluate(lf)
+	} else {
+		reason, _ := res["reason"].(string)
+		if reason == "disabled" || reason == "other_pc" || reason == "invalid" {
+			lf.State = reason
+			writeLicense(lf)
+			st = evaluate(lf)
+			logf("Key check: %s", reason)
+		} else {
+			st.Offline = st.Activated
+		}
 	}
-	res, err := postJSON(srv+"/check", map[string]string{"key": key, "hwid": hwid()})
-	if err != nil {
-		// Can't reach the server: trust the saved key for this launch so no internet doesn't lock people out.
-		proUnlocked = true
-		return licenseStatus{Required: true, Activated: true, Key: maskKey(key), Offline: true}
+	if setLicense(st) {
+		emit("license", st)
 	}
-	ok, _ := res["ok"].(bool)
-	if !ok {
-		proUnlocked = false
-		_ = os.Remove(licensePath()) // disabled or invalid: drop it so they can enter another
-		return licenseStatus{Required: true, Activated: false}
-	}
-	proUnlocked = true
-	return licenseStatus{Required: true, Activated: true, Key: maskKey(key)}
 }
 
-// activateKey is called from the activation screen.
+// activateKey is called from the "enter your key" box.
 func activateKey(key string) (licenseStatus, error) {
-	srv := licenseServer()
-	key = strings.ToUpper(strings.TrimSpace(key))
+	srv := serverURL()
 	if srv == "" {
 		return licenseStatus{Required: false, Activated: true}, nil
 	}
-	res, err := postJSON(srv+"/activate", map[string]string{"key": key, "hwid": hwid()})
-	if err != nil {
-		return licenseStatus{Required: true, Activated: false}, errOf("Couldn't reach the activation server. Check your internet connection.")
+	key = normalizeKey(key)
+	if len(key) < 10 {
+		return licenseStatusNow(), errors.New("That doesn't look like a full key. It looks like ASTRO-XXXXX-XXXXX-XXXXX.")
+	}
+	res, code, err := postJSON(srv+"/activate", map[string]string{"key": key, "hwid": hwid()}, 15*time.Second)
+	if err != nil || res == nil {
+		return licenseStatusNow(), errors.New("Couldn't reach the activation server. Check your internet connection and try again.")
 	}
 	if ok, _ := res["ok"].(bool); !ok {
 		reason, _ := res["reason"].(string)
 		if reason == "" {
 			reason = "That key didn't work."
 		}
-		return licenseStatus{Required: true, Activated: false}, errOf(reason)
+		if code >= 500 {
+			reason = "The activation server had a problem. Try again in a minute."
+		}
+		return licenseStatusNow(), errors.New(reason)
 	}
-	saveLicenseKey(key)
-	proUnlocked = true
-	return licenseStatus{Required: true, Activated: true, Key: maskKey(key)}, nil
+	lf := licenseFile{Key: key, HWID: hwid(), LastOK: time.Now().Unix()}
+	writeLicense(lf)
+	st := evaluate(lf)
+	setLicense(st)
+	logf("Key activated: %s", maskKey(key))
+	return st, nil
 }
 
-func errOf(s string) error { return &simpleErr{s} }
-
-type simpleErr struct{ s string }
-
-func (e *simpleErr) Error() string { return e.s }
+// removeKey forgets the saved key (Settings > Your key > Remove).
+func removeKey() licenseStatus {
+	_ = os.Remove(licensePath())
+	st := evaluate(licenseFile{})
+	setLicense(st)
+	return st
+}

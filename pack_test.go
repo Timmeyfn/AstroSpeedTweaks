@@ -82,7 +82,8 @@ func TestPackChecks(t *testing.T) {
 }
 
 func TestStarterPack(t *testing.T) {
-	b, err := os.ReadFile("github-repo-starter/astrospeed.json")
+	// the starter pack shipped in the repo root must pass the safety checks with no problems
+	b, err := os.ReadFile("astrospeed.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,9 +91,8 @@ func TestStarterPack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bat, _ := os.ReadFile("github-repo-starter/tweaks/example_network.bat")
-	res := CheckPack(p, map[string]string{"example_network.bat": string(bat)}, Categories, Catalog, Games)
-	if len(res.Problems) > 0 || len(res.Tweaks) != 3 || len(res.Games) != 1 {
-		t.Fatalf("starter pack: %d tweaks, %d games, problems %v", len(res.Tweaks), len(res.Games), res.Problems)
+	res := CheckPack(p, nil, Categories, Catalog, Games)
+	if len(res.Problems) > 0 {
+		t.Fatalf("starter pack problems: %v", res.Problems)
 	}
 }

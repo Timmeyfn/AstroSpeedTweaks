@@ -94,11 +94,12 @@ const avail = id => st(id) !== 'na';
 const catTweaks = c => T().filter(t => t.cat === c);
 const appliedCount = list => list.filter(t => isOn(t.id)).length;
 const availCount = list => list.filter(t => avail(t.id)).length;
-const pendingFor = p => T().filter(t => t.profile > 0 && t.profile <= p && avail(t.id) && !isOn(t.id));
+const pendingFor = p => T().filter(t => t.profile > 0 && t.profile <= p && avail(t.id) && !isOn(t.id) && !locked(t));
+const lockedFor = p => T().filter(t => t.profile > 0 && t.profile <= p && avail(t.id) && !isOn(t.id) && locked(t));
 const LIC = () => (S.data && S.data.license) || { required: false, activated: true };
 const proUnlocked = () => { const l = LIC(); return !l.required || l.activated; };
 const locked = t => !!t.pro && !proUnlocked();
-const BUY_URL = 'https://astrospeed.dupelication.workers.dev/';
+const shopURL = () => ((S.data && S.data.server) || '') + '/#pricing';
 
 const toolPages = [
   { id: 'checkup', title: 'PC checkup', icon: 'pulse', sub: 'A full scan of what is holding your FPS back, with a score and one-click fixes.' },
@@ -729,14 +730,14 @@ function licensePanel(d) {
   const l = d.license || { required: false, activated: true };
   if (!l.required) return '';
   const body = l.activated
-    ? `<p style="margin:0;display:flex;align-items:center;gap:8px">${ico('ok','ico-ok')}<b>Full version unlocked</b>${l.offline ? ' <span class="muted">(offline — using your saved key)</span>' : ''}</p><p class="muted small" style="margin:8px 0 0">Key ${esc(l.key||'')} &middot; locked to this PC.</p>`
-    : `<p style="margin:0"><b>You're on the free version.</b></p><p class="muted small" style="margin:8px 0 14px">A key unlocks the full Optimize, all per-game tweaks, network/BIOS tweaks, auto-boost and the hotkey.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Enter a key</button><button class="btn sm ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button></div>`;
+    ? `<p style="margin:0;display:flex;align-items:center;gap:8px">${ico('ok','ico-ok')}<b>Full version unlocked</b>${l.offline ? ' <span class="muted">(offline — using your saved key)</span>' : ''}</p><p class="muted small" style="margin:8px 0 12px">Key ${esc(l.key||'')} &middot; locked to this PC.</p><div class="actions" style="margin:0"><button class="btn sm quiet" data-act="removeKey" type="button">Remove key from this PC</button></div>`
+    : `${l.problem ? `<p class="key-problem">${ico('warn','ico-warn')}${esc(l.problem)}</p>` : ''}<p style="margin:0"><b>You're on the free version.</b></p><p class="muted small" style="margin:8px 0 14px">A key unlocks the full Optimize, all per-game tweaks, network/BIOS tweaks, auto-boost and the hotkey.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Enter a key</button><button class="btn sm ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button></div>`;
   return `<div class="panel spot"><div class="panel-h"><h2>Your key</h2></div><div class="panel-b">${body}</div></div>`;
 }
 function packPanel(d) {
   const p = d.pack || {};
   let body;
-  if (!d.updateRepo) body = `<p class="muted small" style="margin:0">Live tweaks aren't available in this copy.</p>`;
+  if (!d.server) body = `<p class="muted small" style="margin:0">Live tweaks aren't available in this copy.</p>`;
   else {
     const when = p.checked ? new Date(p.checked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const stat = S.packChecking ? `<span class="spin"></span>Checking…`
@@ -748,7 +749,7 @@ function packPanel(d) {
       ${(p.problems || []).length ? `<details class="pack-probs"><summary>${plural(p.problems.length, 'line')} skipped</summary>${p.problems.slice(0, 40).map(x => `<div>${esc(x)}</div>`).join('')}</details>` : ''}
       <p class="muted small" style="margin:0">New tweaks arrive by themselves, no app update needed. Nothing is applied until you switch it on or run Optimize.</p>`;
   }
-  return `<div class="panel spot"><div class="panel-h"><h2>Live tweaks</h2>${d.updateRepo ? `<button class="btn sm quiet" data-act="refreshPack" type="button"${S.packChecking ? ' disabled' : ''}>${ico('reboot')}Check now</button>` : ''}</div><div class="panel-b">${body}</div></div>`;
+  return `<div class="panel spot"><div class="panel-h"><h2>Live tweaks</h2>${d.server ? `<button class="btn sm quiet" data-act="refreshPack" type="button"${S.packChecking ? ' disabled' : ''}>${ico('reboot')}Check now</button>` : ''}</div><div class="panel-b">${body}</div></div>`;
 }
 async function reloadCatalog(info) {
   try {
@@ -836,7 +837,7 @@ on('updateProgress', p => {
   box.hidden = false;
   const pct = Math.max(0, Math.min(100, p.pct || 0));
   if (fill) fill.style.width = pct + '%';
-  if (txt) txt.textContent = p.done ? 'Finishing…' : (p.totalMB ? `Downloading… ${pct}% (${(p.receivedMB||0).toFixed(1)} of ${(p.totalMB||0).toFixed(1)} MB)` : `Downloading… ${pct}%`);
+  if (txt) txt.textContent = p.done ? 'Finishing…' : (p.totalMB > 0 ? `Downloading… ${pct}% (${(p.receivedMB||0).toFixed(1)} of ${p.totalMB.toFixed(1)} MB)` : `Downloading… ${(p.receivedMB||0).toFixed(1)} MB`);
 });
 async function runUpdate() {
   if (updating) return; updating = true;
@@ -861,6 +862,7 @@ async function autoCheckUpdate() {
   try {
     S.update = await api('checkUpdate');
     if (!S.update.available) return;
+    if (S.data.afterUpdate) { renderNav(); toast(`The update finished, but the server still offers ${S.update.latest}. Re-upload the right .exe in your admin page.`, 'err', 10000); return; }
     renderNav();
     let skipped = '';
     try { skipped = localStorage.getItem('sg-skip-version') || ''; } catch (e) { /* ignore */ }
@@ -1406,7 +1408,7 @@ function confirmBox(title, body, okLabel, danger) {
 // ───────────────────────── jobs (apply / undo with progress) ─────────────────────────
 let profileChoice = 2;
 function openOptimize() {
-  profileChoice = S.data.profile || 2;
+  profileChoice = proUnlocked() ? (S.data.profile || 2) : 1;
   const rec = pendingFor(1), comp = pendingFor(2);
   const card = (p, name, list, bullets) => `
     <button class="profile${profileChoice === p ? ' on' : ''}${p === 2 && !proUnlocked() ? ' prof-locked' : ''}" data-profile="${p}" type="button">
@@ -1429,7 +1431,8 @@ function openOptimize() {
 function updateOptSummary() {
   const n = pendingFor(profileChoice).length;
   const s = $('#optSummary');
-  if (s) s.textContent = n ? `${plural(n, 'tweak')} will be applied.` : 'Everything in this profile is already on.';
+  const lk = lockedFor(2).length;
+  if (s) s.textContent = (n ? `${plural(n, 'tweak')} will be applied.` : 'Everything you can apply here is already on.') + (lk ? ` ${lk} more need a key.` : '');
   $$('.profile').forEach(b => b.classList.toggle('on', +b.dataset.profile === profileChoice));
 }
 
@@ -1584,8 +1587,9 @@ document.addEventListener('click', async e => {
     case 'changes': S.expanded.has(id) ? S.expanded.delete(id) : S.expanded.add(id); rerenderView(); break;
     case 'optimize': openOptimize(); break;
     case 'upgrade': showUpgrade(); break;
+    case 'removeKey': if (await confirmBox('Remove your key from this PC?', 'The app goes back to the free version here. You can enter the key again any time, on this PC only.', 'Remove key')) { try { S.data.license = await api('removeKey'); toast('Key removed from this PC.', 'info'); } catch (err) { toast(err.message, 'err'); } renderNav(); rerenderView(); } break;
     case 'activateKey': await doActivate(); break;
-    case 'buyKey': api('open', { target: BUY_URL }).catch(() => {}); break;
+    case 'buyKey': if (S.data.server) api('open', { target: shopURL() }).catch(() => {}); break;
     case 'startOptimize': {
       const ids = pendingFor(profileChoice).map(t => t.id);
       const restore = $('#optRestore').checked;
@@ -1596,7 +1600,7 @@ document.addEventListener('click', async e => {
     }
     case 'apply1': S.busy.add(id); rerenderView(); try { await api('apply', { ids: [id] }); toast('Applied: ' + byId(id).title, 'ok'); } catch (err) { toast(err.message, 'err'); } S.busy.delete(id); refreshStates(); break;
     case 'applyCat': {
-      const ids = catTweaks(b.dataset.cat).filter(t => t.profile > 0 && avail(t.id) && !isOn(t.id)).map(t => t.id);
+      const ids = catTweaks(b.dataset.cat).filter(t => t.profile > 0 && avail(t.id) && !isOn(t.id) && !locked(t)).map(t => t.id);
       if (ids.length) runJob('apply', { ids }, 'Applying ' + S.data.categories.find(c => c.id === b.dataset.cat).title, 'Starting…');
       break;
     }
@@ -1693,6 +1697,7 @@ window.addEventListener('resize', () => {
 // ───────────────────────── boot ─────────────────────────
 $('#view').addEventListener('scroll', updateScrollBar, { passive: true });
 on('hotkeyboost', d => toast(`Boosted${d.game ? ' ' + d.game : ''}: ${Math.max(0, Math.round(d.freedMB))} MB memory freed, timer tightened.`, 'ok', 5000));
+on('license', l => { S.data.license = l; renderNav(); rerenderView(); if (l.problem && !l.activated) toast(l.problem + ' The app is back on the free version.', 'err', 9000); });
 on('packUpdated', info => { const had = (S.data && S.data.pack) || {}; reloadCatalog(info).then(() => { if (info.tweaks > (had.tweaks || 0) || info.games > (had.games || 0)) toast('New live tweaks just arrived.', 'ok', 5000); }); });
 on('autoboost', d => toast(`${d.game} started. Boosted: memory cleared, timer tightened, high priority.`, 'ok', 6000));
 $('#themeBtn').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));

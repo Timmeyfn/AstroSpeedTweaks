@@ -686,3 +686,5 @@ table.ping{width:100%;border-collapse:collapse;font-size:14px}
 .upd-bar{height:10px;border-radius:999px;background:var(--bg-2);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
 .upd-bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent) 70%,#FFB37A);transition:width .25s var(--out)}
 .upd-prog-txt{margin-top:10px;font-size:13px;color:var(--ink-2);font-weight:600;font-variant-numeric:tabular-nums}
+.key-problem{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-weight:600;color:var(--warn)}
+.key-problem svg{width:16px;height:16px;flex:none}
