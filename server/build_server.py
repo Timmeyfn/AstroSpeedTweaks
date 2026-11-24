@@ -9,7 +9,7 @@ import json, pathlib, sys
 here = pathlib.Path(__file__).resolve().parent
 src = here / "src"
 js = (src / "server.js").read_text(encoding="utf-8")
-pages = {"__SITE_HTML__": "site.html", "__ADMIN_HTML__": "admin.html", "__THANKS_HTML__": "thanks.html", "__SIMPLE_HTML__": "simple.html"}
+pages = {"__SITE_HTML__": "site.html", "__ADMIN_HTML__": "admin.html", "__THANKS_HTML__": "thanks.html", "__SIMPLE_HTML__": "simple.html", "__PURCHASES_HTML__": "purchases.html"}
 for marker, name in pages.items():
     html = (src / name).read_text(encoding="utf-8")
     if marker not in js:

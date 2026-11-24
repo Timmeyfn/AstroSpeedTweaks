@@ -771,7 +771,7 @@ function licensePanel(d) {
     ? `<p style="margin:0;display:flex;align-items:center;gap:8px">${ico('clock')}<b>Trial · ${esc(timeLeft(l.expiresAt))}</b></p><p class="muted small" style="margin:8px 0 12px">Ends ${esc(new Date(l.expiresAt).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}. When it ends, the paid tweaks it unlocked are undone automatically and the app goes back to the free version. Buy a key to keep everything.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="buyKey" type="button">${ico('ext')}Buy a key</button><button class="btn sm quiet" data-act="upgrade" type="button">Enter a full key</button><button class="btn sm quiet" data-act="removeKey" type="button">End trial now</button></div>`
     : l.activated
     ? `<p style="margin:0;display:flex;align-items:center;gap:8px">${ico('ok','ico-ok')}<b>Full version unlocked</b>${l.offline ? ' <span class="muted">(offline — using your saved key)</span>' : ''}</p><p class="muted small" style="margin:8px 0 12px">Key ${esc(l.key||'')} &middot; locked to this PC.</p><div class="actions" style="margin:0"><button class="btn sm quiet" data-act="removeKey" type="button">Remove key from this PC</button></div>`
-    : `${l.problem ? `<p class="key-problem">${ico('warn','ico-warn')}${esc(l.problem)}</p>` : ''}<p style="margin:0"><b>You're on the free version.</b></p><p class="muted small" style="margin:8px 0 14px">${paidStats().locked} of the ${paidStats().total} speed fixes for this PC are locked, along with the game booster, cleaner, startup manager, DNS switcher, auto-boost and the hotkey. A key unlocks all of it.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Enter a key</button><button class="btn sm ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button></div>`;
+    : `${l.problem ? `<p class="key-problem">${ico('warn','ico-warn')}${esc(l.problem)}</p>` : ''}<p style="margin:0"><b>You're on the free version.</b></p><p class="muted small" style="margin:8px 0 14px">${paidStats().locked} of the ${paidStats().total} speed fixes for this PC are locked, along with the game booster, cleaner, startup manager, DNS switcher, auto-boost and the hotkey. A key unlocks all of it.</p><div class="actions" style="margin:0"><button class="btn sm primary" data-act="upgrade" type="button">${ico('lock')}Enter a key</button><button class="btn sm ghost" data-act="buyKey" type="button">${ico('ext')}Get a key</button>${d.server ? `<button class="btn sm quiet" data-act="myPurchases" type="button">My purchases</button>` : ''}</div>`;
   return `<div class="panel spot"><div class="panel-h"><h2>Your key</h2></div><div class="panel-b">${body}</div></div>`;
 }
 function packPanel(d) {
@@ -842,6 +842,7 @@ function showUpgrade() {
         <input id="keyInput" type="text" autocomplete="off" spellcheck="false" placeholder="ASTRO-XXXXX-XXXXX-XXXXX" value="">
       </label>
       <div id="keyErr" class="key-err"></div>
+      ${S.data.server ? `<p class="muted small" style="margin:10px 0 0">Can't find your key? <a href="#" data-act="myPurchases" style="color:var(--accent);font-weight:700">Open My purchases</a> — keys bought on this PC are saved there.</p>` : ''}
     </div>
     <div class="dialog-f"><button class="btn quiet" data-close type="button">Not now</button><span class="spacer"></span><button class="btn secondary" data-act="activateKey" type="button">${ico('check')}Activate key</button><button class="btn primary lg" data-act="buyKey" data-autofocus type="button">${ico('ext')}${price ? `Get a key · ${esc(price)}` : 'Get a key'}</button></div>`);
   const inp = $('#keyInput'); if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') doActivate(); });
@@ -1740,6 +1741,7 @@ document.addEventListener('click', async e => {
     case 'upgrade': showUpgrade(); break;
     case 'removeKey': if (await confirmBox(LIC().trial ? 'End your trial now?' : 'Remove your key from this PC?', LIC().trial ? 'The paid tweaks your trial unlocked are undone first, then the app goes back to the free version.' : 'The app goes back to the free version here. You can enter the key again any time, on this PC only.', LIC().trial ? 'End trial' : 'Remove key', !!LIC().trial)) { try { S.data.license = await api('removeKey'); toast('Key removed from this PC.', 'info'); } catch (err) { toast(err.message, 'err'); } renderNav(); rerenderView(); } break;
     case 'activateKey': await doActivate(); break;
+    case 'myPurchases': e.preventDefault(); if (S.data.server) api('open', { target: S.data.server + '/purchases' }).catch(() => {}); break;
     case 'buyKey': if (S.data.server) api('open', { target: shopURL() }).catch(() => {}); break;
     case 'startOptimize': {
       const ids = pendingFor(profileChoice).map(t => t.id);

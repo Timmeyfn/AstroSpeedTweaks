@@ -53,6 +53,10 @@ export default {
         case "/":
         case "/index.html":
           return page(SITE_HTML);
+        case "/purchases":
+          return page(PURCHASES_HTML);
+        case "/key-status":
+          return await keyStatus(request, env);
         case "/config.json":
           return await publicConfig(env);
         case "/version.json":
@@ -296,6 +300,23 @@ async function activate(request, env) {
     await putKey(env, k, rec);
   }
   return json({ ok: true, key: k, expiresAt: rec.expiresAt || 0 });
+}
+
+// For the "My purchases" page: is a key you already hold active, unused or disabled?
+// Keys are long and random, so this reveals nothing to someone who doesn't have the key.
+async function keyStatus(request, env) {
+  needStorage(env);
+  if (request.method !== "POST") return json({ ok: false }, 405);
+  const { keys } = await request.json().catch(() => ({}));
+  const list = (Array.isArray(keys) ? keys : []).slice(0, 20).map(normKey).filter(isKeyName);
+  const out = {};
+  for (const k of list) {
+    const rec = await env.LICENSES.get(k, "json");
+    if (!rec) { out[k] = { state: "unknown" }; continue; }
+    const expired = rec.expiresAt && Date.now() >= rec.expiresAt;
+    out[k] = { state: rec.revoked ? "disabled" : expired ? "expired" : rec.hwid ? "active" : "unused", trial: !!rec.trialMs, expiresAt: rec.expiresAt || 0, activatedAt: rec.activatedAt || 0 };
+  }
+  return json({ ok: true, keys: out });
 }
 
 async function check(request, env) {
@@ -686,3 +707,4 @@ const SITE_HTML = __SITE_HTML__;
 const ADMIN_HTML = __ADMIN_HTML__;
 const THANKS_HTML = __THANKS_HTML__;
 const SIMPLE_HTML = __SIMPLE_HTML__;
+const PURCHASES_HTML = __PURCHASES_HTML__;

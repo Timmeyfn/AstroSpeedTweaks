@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "2.2.0"
+const AppVersion = "2.2.1"
 
 // versionMarker lets the admin page read the version straight out of an uploaded exe.
 const versionMarker = "ASTROSPEED_VERSION=" + AppVersion + ";"
