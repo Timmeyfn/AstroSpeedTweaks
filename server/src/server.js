@@ -30,7 +30,7 @@ const MIN_PASS = 12;
 
 const DEFAULT_SETTINGS = {
   productName: "Astro Tweaks",
-  price: 500, // in cents: 500 = $5.00
+  price: 2000, // in cents: 2000 = $20.00
   currency: "aud",
   supportEmail: "",
 };
@@ -198,6 +198,9 @@ function needStorage(env) {
 }
 async function getSettings(env) {
   const s = (env.LICENSES && (await env.LICENSES.get("cfg:settings", "json"))) || {};
+  // settings saved before the price went to $20 still carry the old $5 default: use the new price
+  // until a price is saved again in admin > Settings (that save sets priceV:2)
+  if (s.price === 500 && !s.priceV) delete s.price;
   return { ...DEFAULT_SETTINGS, ...s };
 }
 async function getRelease(env) {
@@ -357,6 +360,9 @@ async function buy(env, url) {
   }
   const session = await stripe(env, "POST", "checkout/sessions", {
     mode: "payment",
+    // cards only: Checkout then shows Google Pay and Apple Pay on devices that have them set up,
+    // and never offers slow methods (bank debits, pay later) that would delay the key
+    "payment_method_types[0]": "card",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": s.currency,
     "line_items[0][price_data][unit_amount]": String(s.price),
@@ -629,6 +635,7 @@ async function adminApi(request, env) {
       price: isFinite(price) && price >= 0 ? price : cur.price,
       currency: /^[a-z]{3}$/.test(String(s.currency || "").toLowerCase()) ? String(s.currency).toLowerCase() : cur.currency,
       supportEmail: String(s.supportEmail || "").slice(0, 120),
+      priceV: 2,
     };
     if (next.price > 0 && next.price < 50) return json({ ok: false, reason: "The price has to be at least 0.50 (Stripe's minimum)." });
     await env.LICENSES.put("cfg:settings", JSON.stringify(next));

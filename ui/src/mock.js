@@ -46,7 +46,7 @@ if (C && !C.__packed) {
     pingOnce: () => (Math.random() < 0.04 ? { error: 'No reply', loss: 100 } : { avg: 28 + Math.random() * 9 + (Math.random() < 0.08 ? 40 : 0), loss: 0 }),
     licenseStatus: () => ({ required: true, activated: LICD }),
     trialReverted: () => { TRIAL_END = false; return { required: true, activated: false, key: '' }; },
-    shopInfo: () => ({ priceShort: '$9.99', priceLabel: '$9.99 AUD', buyEnabled: true }),
+    shopInfo: () => ({ priceShort: '$20', priceLabel: '$20 AUD', buyEnabled: true }),
     removeKey: () => { LICD = false; return { required: true, activated: false }; },
     activate: (a) => { const ok = /ASTRO/i.test((a && a.key) || ''); if (ok) LICD = true; return ok ? { required: true, activated: true, key: 'ASTRO-•••••-•••••-•••••' } : { required: true, activated: false, error: 'That key isn\'t valid (demo).' }; },
     packStatus: () => PACK(),
