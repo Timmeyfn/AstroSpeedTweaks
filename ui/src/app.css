@@ -737,3 +737,5 @@ table.ping{width:100%;border-collapse:collapse;font-size:14px}
 .up-note{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:13px;margin:12px 0 0}
 .up-note svg{width:15px;height:15px}
 .unlock-btn{border-color:var(--accent);color:var(--accent)}
+.bat-cmds summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--accent)}
+.bat-cmds pre{margin:10px 0 0;max-height:220px;overflow:auto;padding:12px 14px;border-radius:12px;background:var(--bg-2, rgba(0,0,0,.04));border:1px solid var(--line);font:12.5px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all}

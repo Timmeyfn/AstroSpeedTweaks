@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestSetKV(t *testing.T) {
 	cases := [][3]string{
@@ -82,5 +85,22 @@ func TestDefaultBat(t *testing.T) {
 	}
 	if isPro(tw) {
 		t.Fatal("default tweak must be free")
+	}
+}
+
+func TestDefaultBatParse(t *testing.T) {
+	old := defaultBatText
+	defer func() { defaultBatText = old }()
+	defaultBatText = "@echo off\r\nrem name: Fortnite optimiser\r\nrem about: Sets up the companion tool.\r\n:: comment\r\n\r\nstart \"\" \"C:\\Tools\\x.exe\"\r\npause\r\n"
+	cmds := defaultBatCommands()
+	if len(cmds) != 1 || !strings.HasPrefix(cmds[0], "start") {
+		t.Fatalf("commands: %q", cmds)
+	}
+	if n, a := defaultBatNameAbout(); n != "Fortnite optimiser" || a != "Sets up the companion tool." {
+		t.Fatalf("name/about: %q %q", n, a)
+	}
+	defaultBatText = "@echo off\nrem just a note\n"
+	if defaultBatAvailable() {
+		t.Fatal("comments only should not be available")
 	}
 }

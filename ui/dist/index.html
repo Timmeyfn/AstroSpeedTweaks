@@ -745,6 +745,8 @@ table.ping{width:100%;border-collapse:collapse;font-size:14px}
 .up-note{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:13px;margin:12px 0 0}
 .up-note svg{width:15px;height:15px}
 .unlock-btn{border-color:var(--accent);color:var(--accent)}
+.bat-cmds summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--accent)}
+.bat-cmds pre{margin:10px 0 0;max-height:220px;overflow:auto;padding:12px 14px;border-radius:12px;background:var(--bg-2, rgba(0,0,0,.04));border:1px solid var(--line);font:12.5px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all}
 
 </style>
 </head>
@@ -1571,11 +1573,36 @@ const paidTag = () => proUnlocked() ? '' : `<span class="pro-tag" style="display
 function defaultBatPanel(d) {
   const b = d.defaultBat || {};
   if (!b.available) return '';
-  const s = st('default-bat');
-  const state = !b.on ? 'Off. Nothing from it is applied.' : s === 'on' || s === 'native' ? 'On and applied.' : 'On. It’s applied each time Astro Tweaks opens.';
-  return `<div class="panel spot default-bat"><div class="panel-h"><h2>Default tweaks</h2></div><div class="panel-b">
-      ${setRow('defaultBat', b.title || 'Astro Tweaks default tweaks', `${esc(b.desc || '')} Runs every time Astro Tweaks opens. Turning it off undoes it.`, b.on, `<span class="dim small" style="display:block;margin-top:4px">${esc(state)}</span>`)}
+  const state = S.defaultBatRunning ? 'Running now…' : !b.asked ? 'Waiting for your answer.' : b.on ? 'Allowed. It runs each time Astro Tweaks opens.' : 'Not allowed. It never runs.';
+  const off = b.undoable ? 'Turning it off puts back the Windows settings it changed. Apps it installed stay installed.' : 'Turning it off stops it running. Changes it already made stay.';
+  return `<div class="panel spot default-bat"><div class="panel-h"><h2>${esc(b.title || 'Fortnite optimiser')}</h2><button class="btn sm quiet" data-act="defaultBatShow" type="button">See what it runs</button></div><div class="panel-b">
+      ${setRow('defaultBat', `Allow ${b.title || 'Fortnite optimiser'} to make changes and open other apps`, `${esc(b.desc ? b.desc + ' ' : '')}${esc(off)}`, !!b.on, `<span class="dim small" style="display:block;margin-top:4px">${esc(state)}</span>`)}
     </div></div>`;
+}
+// The "Allow?" window: shown the first time the app opens, and when switching it on in Settings.
+function askDefaultBat(fromSettings) {
+  const b = S.data.defaultBat || {};
+  if (!b.available) return;
+  const name = b.title || 'Fortnite optimiser';
+  const cmds = (b.commands || []).map(c => esc(c)).join('\n');
+  openModal(`
+    <div class="dialog-h"><div><div class="eyebrow">Permission</div><h2>Allow ${esc(name)} to make changes and open other apps?</h2><p>${esc(name)} is built into Astro Tweaks. If you allow it, it runs a set of commands on this PC now and each time Astro Tweaks opens. It can change Windows settings and open or set up other apps.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
+    <div class="dialog-b">
+      ${b.desc ? `<p style="margin:0 0 12px"><b>What it's for:</b> ${esc(b.desc)}</p>` : ''}
+      <details class="bat-cmds"><summary>See exactly what it runs (${(b.commands || []).length} command${(b.commands || []).length === 1 ? '' : 's'})</summary><pre>${cmds}</pre></details>
+      <p class="muted small" style="margin:12px 0 0">You can change your mind any time at the bottom of Settings. ${b.undoable ? 'Turning it off puts back the Windows settings it changed. Apps it installed stay installed.' : 'Turning it off stops it running. Changes it already made stay.'}</p>
+    </div>
+    <div class="dialog-f"><button class="btn quiet" data-act="defaultBatAnswer" data-on="0" type="button">Don't allow</button><span class="spacer"></span><button class="btn primary" data-act="defaultBatAnswer" data-on="1" data-autofocus type="button">${ico('check')}Allow</button></div>`);
+}
+async function answerDefaultBat(on) {
+  closeModal();
+  try {
+    await api('setSetting', { key: 'defaultBat', on });
+    Object.assign(S.data.defaultBat, { asked: true, on });
+    if (!on) toast(`${S.data.defaultBat.title || 'It'} won't run. You can allow it later at the bottom of Settings.`, 'ok', 5000);
+    await refreshStates();
+  } catch (err) { toast(err.message, 'err', 7000); }
+  if (S.page === 'settings') rerenderView();
 }
 
 function licensePanel(d) {
@@ -2540,10 +2567,10 @@ document.addEventListener('click', async e => {
       if (key === 'motion') { applyMotion(document.documentElement.classList.contains('motion-off'), true); rerenderView(); break; }
       if ((key === 'autoboost' || key === 'hotkey' || key === 'autoClean' || key === 'memGuard') && !proUnlocked()) { showUpgrade(); break; }
       if (key === 'defaultBat') {
-        const want = !(S.data.defaultBat && S.data.defaultBat.on);
+        if (!(S.data.defaultBat && S.data.defaultBat.on)) { askDefaultBat(true); break; } // switching on always asks first
         b.disabled = true;
-        try { await api('setSetting', { key, on: want }); S.data.defaultBat.on = want; toast(want ? 'Default tweaks are on.' : 'Default tweaks are off and undone.', 'ok'); await refreshStates(); } catch (err) { toast(err.message, 'err', 7000); }
-        rerenderView(); break;
+        await answerDefaultBat(false);
+        break;
       }
       if (key === 'autoboost') { try { S.data.autoBoost = await api('setAutoBoost', { on: !S.data.autoBoost }); } catch (err) { toast(err.message, 'err'); } rerenderView(); break; }
       const cur = key === 'startup' ? !!S.startupOn : !!S.data[key];
@@ -2562,6 +2589,8 @@ document.addEventListener('click', async e => {
     case 'upgrade': showUpgrade(); break;
     case 'removeKey': if (await confirmBox(LIC().trial ? 'End your trial now?' : 'Remove your key from this PC?', LIC().trial ? 'The paid tweaks your trial unlocked are undone first, then the app goes back to the free version.' : 'The app goes back to the free version here. You can enter the key again any time, on this PC only.', LIC().trial ? 'End trial' : 'Remove key', !!LIC().trial)) { try { S.data.license = await api('removeKey'); toast('Key removed from this PC.', 'info'); } catch (err) { toast(err.message, 'err'); } renderNav(); rerenderView(); } break;
     case 'activateKey': await doActivate(); break;
+    case 'defaultBatAnswer': answerDefaultBat(b.dataset.on === '1'); break;
+    case 'defaultBatShow': askDefaultBat(true); break;
     case 'myPurchases': e.preventDefault(); if (S.data.server) api('open', { target: S.data.server + '/purchases' }).catch(() => {}); break;
     case 'buyKey': if (S.data.server) api('open', { target: shopURL() }).catch(() => {}); break;
     case 'startOptimize': {
@@ -2673,7 +2702,14 @@ $('#view').addEventListener('scroll', updateScrollBar, { passive: true });
 on('hotkeyboost', d => toast(`Boosted${d.game ? ' ' + d.game : ''}: ${Math.max(0, Math.round(d.freedMB))} MB memory freed, timer tightened.`, 'ok', 5000));
 on('autoCleaned', r => { S.data.lastAutoClean = new Date().toISOString(); if (r.freedMB >= 1) toast(`Weekly clean-up freed ${fmtMB(r.freedMB)}.`, 'ok', 5000); if (S.page === 'settings') rerenderView(); });
 on('memGuard', r => toast(`Memory guard cleared ${fmtMB(r.freedMB)} so your game has room.`, 'ok', 4000));
-on('defaultBat', () => refreshStates());
+on('defaultBat', r => {
+  const name = r.title || 'Fortnite optimiser';
+  S.defaultBatRunning = r.status === 'running';
+  if (r.status === 'running') toast(`${name} is running…`, 'info', 3000);
+  else if (r.status === 'done') { toast(`${name} has finished.`, 'ok', 4000); refreshStates(); }
+  else if (r.status === 'failed') toast(`${name} didn't finish. Details are in the log (Settings → Open logs).`, 'err', 7000);
+  if (S.page === 'settings') rerenderView();
+});
 on('license', l => { const was = proUnlocked(); S.data.license = l; if (was !== proUnlocked()) reloadCatalog(); renderNav(); rerenderView(); if (l.needsRevert) enforceTrialEnd(); else if (l.problem && !l.activated) toast(l.problem + ' The app is back on the free version.', 'err', 9000); });
 // When a trial is over (or its key was removed), undo every paid tweak it applied, then tell the backend.
 let trialEnding = false;
@@ -2720,7 +2756,7 @@ $('#motionBtn').addEventListener('click', () => { applyMotion(document.documentE
     $('#app').classList.add('ready');
     S.splashGone = true;
     if (S.data) { S.anim = true; render(); }
-    if (S.data) { api('drives').then(d => { S.drives = d || []; if (S.page === 'dashboard') rerenderView(); }).catch(() => {}); setTimeout(autoCheckUpdate, 1200); if (LIC().needsRevert) setTimeout(enforceTrialEnd, 900); else setTimeout(maybeDailyUpsell, 2500); if (S.data.server) api('shopInfo').then(r => { S.shop = r || {}; }).catch(() => {}); }
+    if (S.data) { api('drives').then(d => { S.drives = d || []; if (S.page === 'dashboard') rerenderView(); }).catch(() => {}); setTimeout(autoCheckUpdate, 1200); if (LIC().needsRevert) setTimeout(enforceTrialEnd, 900); else if (S.data.defaultBat && S.data.defaultBat.available && !S.data.defaultBat.asked) setTimeout(() => { if ($('#modal').hidden) askDefaultBat(false); }, 1500); else setTimeout(maybeDailyUpsell, 2500); if (S.data.server) api('shopInfo').then(r => { S.shop = r || {}; }).catch(() => {}); }
     setTimeout(() => $('#splash').remove(), 1400);
   }, wait);
 })();

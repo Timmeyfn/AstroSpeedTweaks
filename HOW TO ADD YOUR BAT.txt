@@ -16,10 +16,20 @@ EVERY TIME YOU WANT TO ADD OR CHANGE A .BAT
 The first build takes a few minutes while Go downloads what it needs.
 After that it takes under a minute.
 
-THE DEFAULT .BAT (EVERYONE GETS IT, RUNS EVERY TIME THE APP OPENS)
-1. Open the "defaults" folder and replace default.bat with your own .bat
-   (keep the name default.bat). A "rem" line near the top becomes its description.
+THE DEFAULT .BAT ("Fortnite optimiser") - RUNS THE WHOLE FILE, ONLY IF PEOPLE ALLOW IT
+1. Open the "defaults" folder and replace default.bat with your own .bat (keep the name).
+   Put these two lines near the top to set what people see:
+       rem name: Fortnite optimiser
+       rem about: One line saying what it does and why.
 2. Raise the version in main.go (const AppVersion = "...").
 3. Double-click build.bat, then upload the new exe in admin > Release.
-It shows as a switch at the bottom of Settings, free for everyone, on by default.
-If default.bat has no commands (only rem lines), the switch is hidden.
+
+What people see: the first time the app opens, a window asks
+"Allow Fortnite optimiser to make changes and open other apps?" with the exact commands listed.
+ - Allow: the whole .bat runs now and every time the app opens (no console window; apps it starts
+   show normally). "pause" lines are skipped automatically.
+ - Don't allow: it never runs.
+They can change their answer any time at the bottom of Settings. Turning it off puts back any
+Windows settings it changed (registry, services, power). Apps it installed stay installed.
+Everything it prints goes into the log (Settings > Open logs and backups).
+If default.bat has no commands (only rem lines), none of this shows.

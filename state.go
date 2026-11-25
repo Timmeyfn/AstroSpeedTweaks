@@ -66,6 +66,7 @@ type State struct {
 	Hotkey        bool                   `json:"hotkey"`
 	NoAutoUpdate  bool                   `json:"noAutoUpdate"`
 	DefaultBatOff bool                   `json:"defaultBatOff,omitempty"`
+	DefaultBatAsked bool                 `json:"defaultBatAsked,omitempty"` // the "Allow?" question was answered
 	AutoClean     bool                   `json:"autoClean,omitempty"`
 	LastAutoClean time.Time              `json:"lastAutoClean,omitempty"`
 	MemGuard      bool                   `json:"memGuard,omitempty"`
