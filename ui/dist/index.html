@@ -1660,7 +1660,14 @@ function showUpgrade() {
     </div>
     <div class="dialog-f"><button class="btn quiet" data-close type="button">Not now</button><span class="spacer"></span><button class="btn secondary" data-act="activateKey" type="button">${ico('check')}Activate key</button><button class="btn primary lg" data-act="buyKey" data-autofocus type="button">${ico('ext')}${price ? `Get a key · ${esc(price)}` : 'Get a key'}</button></div>`);
   const inp = $('#keyInput'); if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') doActivate(); });
-  if (!S.shop && S.data && S.data.server) api('shopInfo').then(r => { S.shop = r || {}; if (S.shop.priceShort && $('#keyInput') && !$('#keyInput').value) showUpgrade(); }).catch(() => { S.shop = {}; });
+  // always re-check the price, so a change in admin > Settings shows up straight away
+  if (S.data && S.data.server && !showUpgrade.busy) {
+    showUpgrade.busy = true;
+    api('shopInfo').then(r => {
+      const was = (S.shop || {}).priceShort; S.shop = r || {};
+      if (S.shop.priceShort !== was && $('#keyInput') && !$('#keyInput').value) showUpgrade();
+    }).catch(() => {}).finally(() => { showUpgrade.busy = false; });
+  }
 }
 // At most once a day, free users see the upgrade window shortly after the app opens.
 function maybeDailyUpsell() {

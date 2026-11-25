@@ -11,7 +11,7 @@ import (
 )
 
 // shopInfo is the price shown in the upgrade window, read from your website's /config.json
-// so changing the price in admin > Settings updates the app too. Cached for 10 minutes.
+// so changing the price in admin > Settings updates the app too. Cached for 30 seconds.
 var (
 	shopMu   sync.Mutex
 	shopVal  map[string]interface{}
@@ -21,7 +21,7 @@ var (
 func shopInfo() map[string]interface{} {
 	shopMu.Lock()
 	defer shopMu.Unlock()
-	if shopVal != nil && time.Since(shopWhen) < 10*time.Minute {
+	if shopVal != nil && time.Since(shopWhen) < 30*time.Second {
 		return shopVal
 	}
 	out := map[string]interface{}{}
