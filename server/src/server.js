@@ -75,6 +75,8 @@ export default {
           return await check(request, env);
         case "/pack":
           return await packData(env);
+        case "/default-bat":
+          return json((env.LICENSES && (await env.LICENSES.get("cfg:defaultbat", "json"))) || { found: false });
         case "/buy":
           return await buy(env, url);
         case "/thanks":
@@ -684,6 +686,26 @@ async function adminApi(request, env) {
     return json({ ok: true, release: rel });
   }
 
+  // The "Fortnite optimiser" .bat: everyone is asked to allow it, and asked again whenever it changes.
+  if (action === "getDefaultBat") {
+    return json({ ok: true, bat: (await env.LICENSES.get("cfg:defaultbat", "json")) || { found: false } });
+  }
+  if (action === "saveDefaultBat") {
+    const b = body.bat || {};
+    const text = String(b.text || "").replace(/\r\n/g, "\n");
+    if (!text.trim()) {
+      await env.LICENSES.delete("cfg:defaultbat");
+      return json({ ok: true, bat: { found: false } });
+    }
+    if (new TextEncoder().encode(text).length > 200 * 1024) return json({ ok: false, reason: "That .bat is bigger than 200 KB." });
+    const name = String(b.name || "").trim().slice(0, 60) || "Fortnite optimiser";
+    const about = String(b.about || "").trim().slice(0, 240);
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(name + "\n" + about + "\n" + text));
+    const hash = [...new Uint8Array(digest)].slice(0, 12).map((x) => x.toString(16).padStart(2, "0")).join("");
+    const bat = { found: true, name, about, text, hash, savedAt: Date.now() };
+    await env.LICENSES.put("cfg:defaultbat", JSON.stringify(bat));
+    return json({ ok: true, bat });
+  }
   if (action === "getPack") {
     return json({ ok: true, pack: (await env.LICENSES.get("cfg:pack", "json")) || { message: "", json: "", bats: {} } });
   }

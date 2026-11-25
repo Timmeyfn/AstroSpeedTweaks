@@ -757,7 +757,7 @@ const paidTag = () => proUnlocked() ? '' : `<span class="pro-tag" style="display
 function defaultBatPanel(d) {
   const b = d.defaultBat || {};
   if (!b.available) return '';
-  const state = S.defaultBatRunning ? 'Running now…' : !b.asked ? 'Waiting for your answer.' : b.on ? 'Allowed. It runs each time Astro Tweaks opens.' : 'Not allowed. It never runs.';
+  const state = S.defaultBatRunning ? 'Running now…' : !b.asked ? (b.updated ? 'It has changed. Waiting for you to allow the new version.' : 'Waiting for your answer.') : b.on ? 'Allowed. It runs each time Astro Tweaks opens.' : 'Not allowed. It never runs.';
   const off = b.undoable ? 'Turning it off puts back the Windows settings it changed. Apps it installed stay installed.' : 'Turning it off stops it running. Changes it already made stay.';
   return `<div class="panel spot default-bat"><div class="panel-h"><h2>${esc(b.title || 'Fortnite optimiser')}</h2><button class="btn sm quiet" data-act="defaultBatShow" type="button">See what it runs</button></div><div class="panel-b">
       ${setRow('defaultBat', `Allow ${b.title || 'Fortnite optimiser'} to make changes and open other apps`, `${esc(b.desc ? b.desc + ' ' : '')}${esc(off)}`, !!b.on, `<span class="dim small" style="display:block;margin-top:4px">${esc(state)}</span>`)}
@@ -769,8 +769,9 @@ function askDefaultBat(fromSettings) {
   if (!b.available) return;
   const name = b.title || 'Fortnite optimiser';
   const cmds = (b.commands || []).map(c => esc(c)).join('\n');
+  S.consentOpen = true;
   openModal(`
-    <div class="dialog-h"><div><div class="eyebrow">Permission</div><h2>Allow ${esc(name)} to make changes and open other apps?</h2><p>${esc(name)} is built into Astro Tweaks. If you allow it, it runs a set of commands on this PC now and each time Astro Tweaks opens. It can change Windows settings and open or set up other apps.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
+    <div class="dialog-h"><div><div class="eyebrow">${b.updated ? 'Updated · permission' : 'Permission'}</div><h2>${b.updated ? `${esc(name)} has changed. Allow the new version?` : `Allow ${esc(name)} to make changes and open other apps?`}</h2><p>${b.updated ? `You allowed an earlier version. It won't run again until you allow this one. ` : `${esc(name)} is part of Astro Tweaks. `}If you allow it, it runs a set of commands on this PC now and each time Astro Tweaks opens. It can change Windows settings and open or set up other apps.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
     <div class="dialog-b">
       ${b.desc ? `<p style="margin:0 0 12px"><b>What it's for:</b> ${esc(b.desc)}</p>` : ''}
       <details class="bat-cmds"><summary>See exactly what it runs (${(b.commands || []).length} command${(b.commands || []).length === 1 ? '' : 's'})</summary><pre>${cmds}</pre></details>
@@ -779,10 +780,11 @@ function askDefaultBat(fromSettings) {
     <div class="dialog-f"><button class="btn quiet" data-act="defaultBatAnswer" data-on="0" type="button">Don't allow</button><span class="spacer"></span><button class="btn primary" data-act="defaultBatAnswer" data-on="1" data-autofocus type="button">${ico('check')}Allow</button></div>`);
 }
 async function answerDefaultBat(on) {
+  S.consentOpen = false;
   closeModal();
   try {
     await api('setSetting', { key: 'defaultBat', on });
-    Object.assign(S.data.defaultBat, { asked: true, on });
+    Object.assign(S.data.defaultBat, { asked: true, on, updated: false });
     if (!on) toast(`${S.data.defaultBat.title || 'It'} won't run. You can allow it later at the bottom of Settings.`, 'ok', 5000);
     await refreshStates();
   } catch (err) { toast(err.message, 'err', 7000); }
@@ -1566,6 +1568,7 @@ function openModal(html, narrow) {
 function closeModal() {
   const m = $('#modal');
   if (m.dataset.locked || m.hidden) return;
+  S.consentOpen = false;
   const tok = ++modalToken;
   m.classList.remove('show');
   setTimeout(() => { if (tok === modalToken) { m.hidden = true; m.innerHTML = ''; } }, 320);
@@ -1886,6 +1889,12 @@ $('#view').addEventListener('scroll', updateScrollBar, { passive: true });
 on('hotkeyboost', d => toast(`Boosted${d.game ? ' ' + d.game : ''}: ${Math.max(0, Math.round(d.freedMB))} MB memory freed, timer tightened.`, 'ok', 5000));
 on('autoCleaned', r => { S.data.lastAutoClean = new Date().toISOString(); if (r.freedMB >= 1) toast(`Weekly clean-up freed ${fmtMB(r.freedMB)}.`, 'ok', 5000); if (S.page === 'settings') rerenderView(); });
 on('memGuard', r => toast(`Memory guard cleared ${fmtMB(r.freedMB)} so your game has room.`, 'ok', 4000));
+on('defaultBatInfo', info => {
+  S.data.defaultBat = info || { available: false };
+  if (S.consentOpen && !info.available) { S.consentOpen = false; closeModal(); }
+  else if (info.available && !info.asked && ($('#modal').hidden || S.consentOpen)) askDefaultBat(false);
+  if (S.page === 'settings') rerenderView();
+});
 on('defaultBat', r => {
   const name = r.title || 'Fortnite optimiser';
   S.defaultBatRunning = r.status === 'running';

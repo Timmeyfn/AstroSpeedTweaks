@@ -16,20 +16,19 @@ EVERY TIME YOU WANT TO ADD OR CHANGE A .BAT
 The first build takes a few minutes while Go downloads what it needs.
 After that it takes under a minute.
 
-THE DEFAULT .BAT ("Fortnite optimiser") - RUNS THE WHOLE FILE, ONLY IF PEOPLE ALLOW IT
-1. Open the "defaults" folder and replace default.bat with your own .bat (keep the name).
-   Put these two lines near the top to set what people see:
-       rem name: Fortnite optimiser
-       rem about: One line saying what it does and why.
-2. Raise the version in main.go (const AppVersion = "...").
-3. Double-click build.bat, then upload the new exe in admin > Release.
+THE OPTIMISER .BAT ("Fortnite optimiser") - CHANGE IT ANY TIME FROM THE ADMIN PAGE
+1. Open https://astrotweaks.app/admin > Live tweaks > "Optimiser .bat".
+2. Type the name people see and one line about what it does.
+3. Pick your .bat (or paste it) and click "Save and make live". No app update needed.
+   To stop it everywhere, click "Remove it".
 
-What people see: the first time the app opens, a window asks
-"Allow Fortnite optimiser to make changes and open other apps?" with the exact commands listed.
+What people see: next time they open the app, a window asks
+"Allow Fortnite optimiser to make changes and open other apps?" with every command listed.
  - Allow: the whole .bat runs now and every time the app opens (no console window; apps it starts
-   show normally). "pause" lines are skipped automatically.
+   show normally; "pause" can't hang it). Its output goes into the app's log.
  - Don't allow: it never runs.
-They can change their answer any time at the bottom of Settings. Turning it off puts back any
-Windows settings it changed (registry, services, power). Apps it installed stay installed.
-Everything it prints goes into the log (Settings > Open logs and backups).
-If default.bat has no commands (only rem lines), none of this shows.
+Each time you save a CHANGED .bat, everyone who allowed the old one is asked again before the new one
+runs. People who said no aren't nagged; they can switch it on at the bottom of Settings.
+Turning it off (or "Undo all") puts back the Windows settings it changed. Apps it installed stay installed.
+
+Keep your admin password long and private: whoever has it can change what this .bat runs.

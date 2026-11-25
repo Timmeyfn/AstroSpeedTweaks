@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "2.3.0"
+const AppVersion = "2.4.0"
 
 // versionMarker lets the admin page read the version straight out of an uploaded exe.
 const versionMarker = "ASTROSPEED_VERSION=" + AppVersion + ";"
@@ -136,7 +136,7 @@ func main() {
 			logf("Hotkey: %v", err)
 		}
 	}
-	go applyDefaultBatOnStart()
+	go startDefaultBat()
 	go autoCleanOnStart()
 	go memGuardLoop()
 	logf("Detected: %s | %s | %.0f GB RAM | Fortnite: %v", curEnv.OSName, curEnv.CPU, curEnv.RAMGB, curEnv.FortniteExe != "")
@@ -744,15 +744,8 @@ func runJob(kind string, ids []string, restore bool, label string, profile int) 
 		results = append(results, r)
 		emit("progress", map[string]interface{}{"phase": "done", "i": i + 1, "n": total, "id": t.ID, "title": t.Title, "status": r.Status, "msg": r.Msg, "changes": r.Changes})
 	}
-	if kind == "revertAll" || kind == "revert" {
-		for _, t := range list {
-			if t.ID == defaultBatID { // undone on purpose: don't re-apply it next launch
-				stateMu.Lock()
-				appState.DefaultBatOff = true
-				saveStateLocked()
-				stateMu.Unlock()
-			}
-		}
+	if kind == "revertAll" {
+		undoDefaultBat() // "Undo everything" includes the optimiser .bat's settings, and switches it off
 	}
 	if kind == "apply" && profile > 0 {
 		stateMu.Lock()

@@ -160,6 +160,18 @@ tr:last-child td{border-bottom:0}
     </section>
 
     <section id="tab-pack" class="hide">
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="font-size:15px;margin-bottom:4px">Optimiser .bat (everyone is asked to allow it)</h3>
+        <p class="muted small">Runs the WHOLE .bat on every PC whose owner clicks Allow, each time the app opens. Free for everyone. Every time you save a changed version, people are asked again before the new one runs. No app update needed.</p>
+        <div class="grid2" style="margin-top:6px">
+          <div><label class="f" for="dbName">Name people see</label><input id="dbName" maxlength="60" placeholder="Fortnite optimiser"></div>
+          <div><label class="f" for="dbFile">Pick the .bat</label><input id="dbFile" type="file" accept=".bat,.cmd"></div>
+        </div>
+        <label class="f" for="dbAbout">What it does (one line, shown in the Allow window)</label><input id="dbAbout" maxlength="240" placeholder="e.g. Sets up the Fortnite companion tool and its settings.">
+        <label class="f" for="dbText">Contents</label><textarea id="dbText" style="min-height:160px;font-family:ui-monospace,Consolas,monospace" placeholder="@echo off&#10;reg add ..."></textarea>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap"><button id="dbSave" type="button">Save and make live</button><button class="g" id="dbClear" type="button">Remove it</button></div>
+        <div class="status info" id="dbStatus"></div>
+      </div>
       <div class="grid2">
         <div class="card">
           <h3 style="font-size:15px;margin-bottom:4px">Your .bat tweaks</h3>
@@ -450,7 +462,28 @@ tr:last-child td{border-bottom:0}
   });
 
   // ── live tweaks ──
-  function loadPack() { return api("getPack").then(function (d) { PACK = d.pack || PACK; PACK.bats = PACK.bats || {}; $("packMsg").value = PACK.message || ""; $("packJson").value = PACK.json || ""; drawBats(); }).catch(function () {}); }
+  function drawDb(b) {
+    b = b || {};
+    $("dbName").value = b.name || ""; $("dbAbout").value = b.about || ""; $("dbText").value = b.text || "";
+    setStatus("dbStatus", b.found ? "Live since " + new Date(b.savedAt).toLocaleString() + "." : "Nothing live yet.", b.found ? "ok" : "info");
+  }
+  function loadDb() { return api("getDefaultBat").then(function (d) { drawDb(d.bat); }).catch(function () {}); }
+  $("dbFile").addEventListener("change", function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    var rd = new FileReader(); rd.onload = function () { $("dbText").value = String(rd.result || ""); setStatus("dbStatus", f.name + " loaded. Click Save to make it live.", "info"); }; rd.readAsText(f);
+  });
+  $("dbSave").addEventListener("click", function () {
+    if (!$("dbText").value.trim()) { setStatus("dbStatus", "Pick or paste a .bat first.", "err"); return; }
+    api("saveDefaultBat", { bat: { name: $("dbName").value, about: $("dbAbout").value, text: $("dbText").value } }).then(function (d) {
+      if (!d.ok) { setStatus("dbStatus", d.reason || "Couldn't save.", "err"); return; }
+      drawDb(d.bat); setStatus("dbStatus", "Saved. Apps ask people to allow this version next time they open.", "ok");
+    }).catch(function (e) { setStatus("dbStatus", e.message || "Couldn't save.", "err"); });
+  });
+  $("dbClear").addEventListener("click", function () {
+    if (!confirm("Remove the optimiser .bat? It stops running on every PC next time the app opens.")) return;
+    api("saveDefaultBat", { bat: { text: "" } }).then(function (d) { drawDb(d.bat); setStatus("dbStatus", "Removed.", "ok"); }).catch(function () {});
+  });
+  function loadPack() { loadDb(); return api("getPack").then(function (d) { PACK = d.pack || PACK; PACK.bats = PACK.bats || {}; $("packMsg").value = PACK.message || ""; $("packJson").value = PACK.json || ""; drawBats(); }).catch(function () {}); }
   function drawBats() {
     var names = Object.keys(PACK.bats).sort();
     $("batList").innerHTML = names.length ? names.map(function (n) { return '<div class="batrow"><span class="n">' + esc(n) + '</span><span class="muted small">' + Math.ceil((PACK.bats[n] || "").length / 1024) + ' KB</span><button class="sm dz" data-del="' + esc(n) + '" type="button">Remove</button></div>'; }).join("") : '<p class="muted small">No .bat tweaks yet.</p>';

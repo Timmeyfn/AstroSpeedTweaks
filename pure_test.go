@@ -71,36 +71,42 @@ func TestPaidTool(t *testing.T) {
 	}
 }
 
-func TestDefaultBat(t *testing.T) {
+func TestDefaultBatParse(t *testing.T) {
+	text := "@echo off\r\nrem name: Fortnite optimiser\r\n:: comment\r\n\r\nstart \"\" \"C:\\Tools\\x.exe\"\r\npause\r\n"
+	if cmds := batCommands(text); len(cmds) != 1 || !strings.HasPrefix(cmds[0], "start") {
+		t.Fatalf("commands: %q", cmds)
+	}
+	if len(batCommands("@echo off\nrem just a note\n")) != 0 {
+		t.Fatal("comments only should have no commands")
+	}
 	old := defaultBatText
 	defer func() { defaultBatText = old }()
-	defaultBatText = "@echo off\nrem only comments\n"
-	if _, _, ok := defaultBatTweak(); ok {
-		t.Fatal("a .bat with no commands should not become a tweak")
+	defaultBatText = "rem name: My tool\nrem about: Does a thing.\nreg add HKCU\\X /v Y /t REG_DWORD /d 1 /f\n"
+	b := embeddedDefaultBat()
+	if b.Name != "My tool" || b.About != "Does a thing." || b.Hash == "" {
+		t.Fatalf("embedded: %+v", b)
 	}
-	defaultBatText = "@echo off\nrem Speeds things up a bit\nreg add \"HKCU\\Software\\Test\" /v X /t REG_DWORD /d 1 /f\n"
-	tw, _, ok := defaultBatTweak()
-	if !ok || tw.ID != defaultBatID || tw.Profile != 0 || len(tw.Actions) == 0 {
-		t.Fatalf("bad default tweak: %+v", tw)
-	}
-	if isPro(tw) {
-		t.Fatal("default tweak must be free")
+	if tw, ok := defaultBatTweak(b); !ok || tw.ID != defaultBatID || isPro(tw) {
+		t.Fatalf("tweak: %+v %v", tw, ok)
 	}
 }
 
-func TestDefaultBatParse(t *testing.T) {
-	old := defaultBatText
-	defer func() { defaultBatText = old }()
-	defaultBatText = "@echo off\r\nrem name: Fortnite optimiser\r\nrem about: Sets up the companion tool.\r\n:: comment\r\n\r\nstart \"\" \"C:\\Tools\\x.exe\"\r\npause\r\n"
-	cmds := defaultBatCommands()
-	if len(cmds) != 1 || !strings.HasPrefix(cmds[0], "start") {
-		t.Fatalf("commands: %q", cmds)
+func TestDefaultBatDecision(t *testing.T) {
+	cases := []struct {
+		cur, ans         string
+		no               bool
+		ask, on, updated bool
+	}{
+		{"h1", "", false, true, false, false},   // never asked
+		{"h1", "h1", false, false, true, false}, // allowed this version
+		{"h1", "h1", true, false, false, false}, // said no
+		{"h2", "h1", false, true, false, true},  // changed since they allowed it: ask again
+		{"h2", "h1", true, false, false, false}, // changed, but they'd said no: stay off
 	}
-	if n, a := defaultBatNameAbout(); n != "Fortnite optimiser" || a != "Sets up the companion tool." {
-		t.Fatalf("name/about: %q %q", n, a)
-	}
-	defaultBatText = "@echo off\nrem just a note\n"
-	if defaultBatAvailable() {
-		t.Fatal("comments only should not be available")
+	for _, c := range cases {
+		a, o, u := defaultBatDecision(c.cur, c.ans, c.no)
+		if a != c.ask || o != c.on || u != c.updated {
+			t.Errorf("%+v -> %v %v %v", c, a, o, u)
+		}
 	}
 }
