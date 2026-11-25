@@ -48,6 +48,12 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (ROLE === "keys" && !KEY_ROUTES.has(path))
       return new Response("Astro Tweaks key server is running.", { headers: { "Content-Type": "text/plain; charset=utf-8", ...CORS } });
+    // Your own domain: set SITE_URL (e.g. https://astrotweaks.app) and visitors who open the website
+    // on the old workers.dev address are sent there. The app's routes (keys, updates, downloads) are
+    // never redirected, so older versions keep working.
+    const site = siteURL(env);
+    if (site && request.method === "GET" && SITE_PAGES.has(path) && url.origin !== site)
+      return Response.redirect(site + (path === "/" ? "/" : path) + url.search + url.hash, 301);
     try {
       switch (path) {
         case "/":
@@ -100,6 +106,11 @@ function json(obj, status = 200) {
     status,
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS },
   });
+}
+const SITE_PAGES = new Set(["/", "/index.html", "/purchases"]);
+function siteURL(env) {
+  const v = String((env && env.SITE_URL) || "").trim().replace(/\/+$/, "");
+  return /^https:\/\/[a-z0-9.-]+$/i.test(v) ? v : "";
 }
 function page(html, status = 200) {
   return new Response(html, { status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
