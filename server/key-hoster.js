@@ -384,9 +384,7 @@ async function buy(env, url) {
   }
   const session = await stripe(env, "POST", "checkout/sessions", {
     mode: "payment",
-    // cards only: Checkout then shows Google Pay and Apple Pay on devices that have them set up,
-    // and never offers slow methods (bank debits, pay later) that would delay the key
-    "payment_method_types[0]": "card",
+    // payment methods (cards, Google Pay, Apple Pay, Link) come from Stripe > Settings > Payment methods
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": s.currency,
     "line_items[0][price_data][unit_amount]": String(s.price),
