@@ -92,6 +92,8 @@ export default {
     } catch (e) {
       const msg = e && e.message ? e.message : String(e);
       console.log("error on " + path + ": " + msg);
+      if (request.method === "GET" && path === "/buy")
+        return page(simplePage("Checkout isn't available right now", "<p>Nothing has been charged. Please try again in a few minutes.</p><p style=\"font-size:13px;opacity:.7\">Details: " + esc(msg.slice(0, 220)) + "</p>", url.origin), 500);
       if (request.method === "GET" && (path === "/thanks" || path === "/buy"))
         return page(simplePage("Something went wrong", "<p>We couldn't load this page just now. Your payment (if you made one) is safe. Please refresh in a minute" + (path === "/thanks" ? " — this same link will show your key." : ".") + "</p>", url.origin), 500);
       return json({ ok: false, code: "server", reason: explainError(msg) }, 500);
@@ -149,6 +151,17 @@ async function healthFull(env) {
   const h = health(env);
   if (env.LICENSES) {
     try { await env.LICENSES.get("cfg:settings"); h.storageRead = true; } catch (e) { h.storageRead = false; h.storageError = explainError(String(e && e.message || e)); }
+  }
+  if (h.stripe) {
+    // ask Stripe whether this account can actually take payments yet
+    try {
+      const a = await stripe(env, "GET", "account");
+      h.stripeCharges = !!a.charges_enabled;
+      if (!a.charges_enabled) h.stripeError = "Stripe hasn't switched on payments for this account yet. Finish the steps in your Stripe dashboard (ID, business details, bank account).";
+    } catch (e) {
+      h.stripeCharges = false;
+      h.stripeError = "Stripe said: " + String(e && e.message || e).slice(0, 200);
+    }
   }
   return h;
 }
