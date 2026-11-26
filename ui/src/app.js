@@ -121,6 +121,7 @@ const paidToolPages = { booster: 'Game booster', cleaner: 'System cleaner', star
 const toolPages = [
   { id: 'checkup', title: 'PC checkup', icon: 'pulse', sub: 'A full scan of what is holding your FPS back, with a score and one-click fixes.' },
   { id: 'bench', title: 'Benchmark', icon: 'gauge', sub: 'Live FPS, 1% lows, frame times, CPU and GPU, like an in-game monitor. Record a run before and after optimizing to see the real difference.' },
+  { id: 'latency', title: 'Input delay', icon: 'mouse', sub: 'Everything that sits between your click and the game, in one place. Turn on low delay mode, test your mouse’s real polling rate and check your screen.' },
   { id: 'booster', title: 'Game booster', icon: 'rocket', sub: 'One-tap actions to run right before you queue: clear memory, tighten the timer, close background apps.' },
   { id: 'cleaner', title: 'System cleaner', icon: 'broom', sub: 'Clears temp files, caches and leftovers. Your game settings, keybinds and replays are never touched.' },
   { id: 'startup', title: 'Startup apps', icon: 'power', sub: 'Choose what launches with Windows. Uses the same switch as Task Manager, so you can change it back there too.' },
@@ -197,7 +198,7 @@ function render() {
   else {
     const p = [...toolPages, ...safetyPages].find(x => x.id === S.page);
     title = p.title; sub = p.sub;
-    const inner = ({ bench: viewBench, checkup: viewCheckup, booster: viewBooster, cleaner: viewCleaner, startup: viewStartup, network: viewNetwork, safety: viewSafety, about: viewAbout, settings: viewSettings })[S.page]();
+    const inner = ({ latency: viewLatency, bench: viewBench, checkup: viewCheckup, booster: viewBooster, cleaner: viewCleaner, startup: viewStartup, network: viewNetwork, safety: viewSafety, about: viewAbout, settings: viewSettings })[S.page]();
     v.innerHTML = paidToolPages[S.page] && !proUnlocked() ? toolPaywall(S.page, inner) : inner;
     afterTool();
   }
@@ -1465,6 +1466,91 @@ async function benchPick() {
     </div></div>`, true);
 }
 
+// ───────────────────────── Input delay ─────────────────────────
+// Low delay mode = the tweaks that shorten the path from your mouse/keyboard to the screen.
+// Mouse/keyboard driver buffers, sensitivity and pointer settings are never touched.
+const LATENCY = [
+  ['Mouse, keyboard & USB', ['usb-suspend', 'usb-devpower', 'access-shortcuts']],
+  ['CPU & timers', ['global-timer', 'priority-sep', 'mmcss-games', 'mmcss-responsiveness', 'power-throttling']],
+  ['Power', ['power-plan', 'core-parking']],
+  ['Graphics & display', ['gamemode', 'gamedvr', 'fso-global', 'windowed-opt', 'hags', 'mpo']],
+  ['Network', ['net-throttling', 'nagle', 'nic-interrupt']],
+  ['Fortnite', ['fn-priority', 'fn-fso']]
+];
+function latencyTweaks() {
+  const out = [];
+  LATENCY.forEach(([g, ids]) => ids.forEach(id => { const t = byId(id); if (t && avail(id)) out.push(Object.assign({}, t, { group: g })); }));
+  return out;
+}
+function viewLatency() {
+  const list = latencyTweaks();
+  const on = list.filter(t => isOn(t.id)).length, total = list.length;
+  const todo = list.filter(t => !isOn(t.id) && !locked(t));
+  const lk = list.filter(t => !isOn(t.id) && locked(t)).length;
+  const pct = total ? Math.round(on / total * 100) : 0;
+  const scr = (S.checkup && S.checkup.displays) || null;
+  return `
+  <section class="panel spot lat-hero"><div class="panel-b">
+    <div class="lat-ring" style="--p:${pct}"><b>${on}<small>/${total}</small></b><span>on</span></div>
+    <div class="lat-copy">
+      <div class="eyebrow">Low delay mode</div>
+      <h2>${pct >= 100 ? 'Your input path is as short as Astro Tweaks can make it' : 'Make every click reach the game sooner'}</h2>
+      <p class="muted">Turns on the Windows settings that add delay between your mouse, keyboard and the screen: USB power saving, timer and scheduler settings, fullscreen handling and network buffering. Everything is backed up and can be undone.</p>
+      <div class="actions">
+        ${todo.length ? `<button class="btn primary lg" data-act="latencyApply" type="button">${ico('bolt')}Turn on low delay mode (${todo.length})</button>` : ''}
+        ${lk ? `<button class="btn ${todo.length ? 'ghost' : 'primary'} lg" data-act="upgrade" type="button">${ico('lock')}Unlock ${lk} more</button>` : ''}
+        ${!todo.length && !lk ? `<span class="state-on">${ico('check')}Low delay mode is on</span>` : ''}
+      </div>
+    </div>
+  </div></section>
+
+  <div class="lat-grid">
+    <section class="panel spot"><div class="panel-h"><h2>Mouse polling rate test</h2></div><div class="panel-b">
+      <p class="muted small" style="margin:0 0 10px">Move your mouse quickly in circles inside the box. This measures how often your mouse really reports to Windows. Higher means less delay: 1000 Hz or more is ideal for gaming.</p>
+      <div class="poll-pad" id="pollPad"><div><b id="pollHz">–</b><span>Hz now</span></div><div><b id="pollPeak">–</b><span>best</span></div></div>
+      <p class="dim small" id="pollTip" style="margin:10px 0 0">If it shows 125 or 500, raise the polling rate in your mouse’s own software (Logitech G HUB, Razer Synapse and so on).</p>
+    </div></section>
+    <section class="panel spot"><div class="panel-h"><h2>Things only you can change</h2></div><div class="panel-b">
+      <ol class="steps">
+        <li><b>Screen:</b> make sure it runs at its highest refresh rate. <a href="#" data-nav="checkup" style="color:var(--accent);font-weight:700">PC checkup</a> tells you if it doesn't.</li>
+        <li><b>Fortnite:</b> turn on <b>NVIDIA Reflex: On + Boost</b> (or AMD Anti-Lag) in Fortnite's video settings, and keep V-Sync off.</li>
+        <li><b>Fortnite rendering:</b> Performance mode has the lowest delay. The <a href="#" data-nav="cat:fortnite" style="color:var(--accent);font-weight:700">Fortnite settings tuner</a> can set it for you.</li>
+        <li><b>Cable it:</b> plug your mouse straight into the PC (not a hub or the monitor), and use a wired network if you can.</li>
+      </ol>
+    </div></section>
+  </div>
+
+  <h3 class="lat-h">What low delay mode changes</h3>
+  ${groupsHTML(list)}
+  <p class="dim small" style="margin-top:6px">Your sensitivity, DPI, pointer settings and mouse/keyboard drivers are never touched.</p>`;
+}
+function latencyEnter() {
+  const pad = $('#pollPad');
+  if (!pad || pad.dataset.on) return;
+  pad.dataset.on = '1';
+  const times = []; let peak = 0;
+  const RATES = [125, 250, 500, 1000, 2000, 4000, 8000];
+  const snap = hz => RATES.reduce((a, r) => Math.abs(r - hz) < Math.abs(a - hz) ? r : a, RATES[0]);
+  const add = ts => { times.push(ts); while (times.length && ts - times[0] > 500) times.shift(); };
+  const evName = 'onpointerrawupdate' in pad ? 'pointerrawupdate' : 'pointermove';
+  pad.addEventListener(evName, e => {
+    const list = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+    if (list.length) list.forEach(c => add(c.timeStamp)); else add(e.timeStamp);
+  });
+  const tick = setInterval(() => {
+    if (!document.body.contains(pad)) { clearInterval(tick); return; }
+    const now = performance.now();
+    while (times.length && now - times[0] > 500) times.shift();
+    if (times.length < 10) { $('#pollHz').textContent = '–'; return; }
+    const span = (times[times.length - 1] - times[0]) / 1000;
+    if (span <= 0.1) return;
+    const hz = (times.length - 1) / span;
+    const shown = hz > 100 ? snap(hz) : Math.round(hz);
+    $('#pollHz').textContent = shown;
+    if (shown > peak) { peak = shown; $('#pollPeak').textContent = peak; $('#pollTip').textContent = peak >= 1000 ? 'Great. Your mouse reports often enough for competitive play.' : 'If this stays at ' + peak + ' while you move fast, raise the polling rate in your mouse’s own software (Logitech G HUB, Razer Synapse and so on).'; }
+  }, 200);
+}
+
 // ───────────────────────── Fortnite settings tuner ─────────────────────────
 function fnCard() {
   const f = S.fn;
@@ -1690,6 +1776,7 @@ async function afterTool() {
   }
   if (S.page === 'network') drawLivePing(true);
   if (S.page === 'bench') benchEnter(); else benchLeave();
+  if (S.page === 'latency') latencyEnter();
   if (S.page === 'booster') {
     if (!S.booster) api('boostStatus').then(b => { S.booster = b; if (S.page === 'booster') rerenderView(); }).catch(() => {});
     if (S.bgApps === null) api('bgApps').then(a => { S.bgApps = a || []; if (S.page === 'booster') rerenderView(); }).catch(() => { S.bgApps = []; });
@@ -1942,6 +2029,11 @@ document.addEventListener('click', async e => {
       <div class="dialog-f"><span class="spacer"></span><button class="btn ghost" data-open="logs" type="button">${ico('ext')}Open log folder</button><button class="btn primary" data-close data-autofocus type="button">Close</button></div>`); S.crashSeen = true; renderBanners(); break;
     case 'changes': S.expanded.has(id) ? S.expanded.delete(id) : S.expanded.add(id); rerenderView(); break;
     case 'optimize': openOptimize(); break;
+    case 'latencyApply': {
+      const ids = latencyTweaks().filter(t => !isOn(t.id) && !locked(t)).map(t => t.id);
+      if (ids.length) runJob('apply', { ids }, 'Turning on low delay mode', 'Starting…');
+      break;
+    }
     case 'upgrade': showUpgrade(); break;
     case 'removeKey': if (await confirmBox(LIC().trial ? 'End your trial now?' : 'Remove your key from this PC?', LIC().trial ? 'The paid tweaks your trial unlocked are undone first, then the app goes back to the free version.' : 'The app goes back to the free version here. You can enter the key again any time, on this PC only.', LIC().trial ? 'End trial' : 'Remove key', !!LIC().trial)) { try { S.data.license = await api('removeKey'); toast('Key removed from this PC.', 'info'); } catch (err) { toast(err.message, 'err'); } renderNav(); rerenderView(); } break;
     case 'activateKey': await doActivate(); break;
