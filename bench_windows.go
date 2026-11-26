@@ -29,6 +29,7 @@ type benchSample struct {
 	RAMPct   float64    `json:"ramPct"`
 	RAMUsed  float64    `json:"ramUsedGB"`
 	Sensors  gpuSensors `json:"sensors"`
+	CPUTemp  float64    `json:"cpuTemp"` // -1 when the PC doesn't report a real sensor
 	PID      uint32     `json:"pid"`
 	Process  string     `json:"process"`
 	Game     string     `json:"game"`
@@ -189,6 +190,10 @@ func benchLoop() {
 		m := memStatus()
 		s.RAMPct, s.RAMUsed = float64(m.MemoryLoad), float64(m.TotalPhys-m.AvailPhys)/(1<<30)
 		s.Sensors = readGPUSensors()
+		if s.Sensors.VRAMUsed < 0 { // not NVIDIA: Windows' own counter still knows the memory in use
+			s.Sensors.VRAMUsed, _ = vramGB()
+		}
+		s.CPUTemp = cpuTempC()
 		framesMu.Lock()
 		if etwErr != "" {
 			s.Error, s.Counting = etwErr, false

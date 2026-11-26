@@ -35,25 +35,54 @@ var (
 	procSetLayeredWindowAttribs = user32.NewProc("SetLayeredWindowAttributes")
 	procFillRect                = user32.NewProc("FillRect")
 	procSetTimer                = user32.NewProc("SetTimer")
+	procIsWindowVisible         = user32.NewProc("IsWindowVisible")
 	procCreateSolidBrush        = gdi32.NewProc("CreateSolidBrush")
 	procCreateFontW             = gdi32.NewProc("CreateFontW")
+	procCreatePen               = gdi32.NewProc("CreatePen")
 	procSelectObject            = gdi32.NewProc("SelectObject")
 	procSetTextColor            = gdi32.NewProc("SetTextColor")
 	procSetBkMode               = gdi32.NewProc("SetBkMode")
 	procTextOutW                = gdi32.NewProc("TextOutW")
+	procPolyline                = gdi32.NewProc("Polyline")
+	procGetTextExtentPoint32W   = gdi32.NewProc("GetTextExtentPoint32W")
 	overlayWndProcPtr           = syscall.NewCallback(overlayWndProc)
 	overlayMu                   sync.Mutex
 	overlayHwnd                 uintptr
-	overlayLines                []overlayLine
-	overlayFontBig, overlayFont uintptr
-	overlayBrush                uintptr
 	overlayClassDone            bool
+	ov                          overlayView
 )
 
-type overlayLine struct {
-	text  string
-	color uint32 // 0x00BBGGRR
-	big   bool
+// overlayView is what the window draws; overlayUpdate fills it in once a second.
+type overlayView struct {
+	opts    overlayOpts
+	waiting bool
+	fps     string
+	low     string
+	rows    []ovRow
+	graph   []float64 // recent frame times (ms), oldest first
+	w, h    int32     // window size for these rows
+	// fonts and brushes for the current size
+	sizeMade                int
+	fBig, fVal, fLbl, fUnit uintptr
+	bg, graphBg             uintptr
+	penLine, penGrid        uintptr
+}
+
+type ovRow struct {
+	label string
+	cells []ovCell
+}
+
+type ovCell struct {
+	val, unit string
+	color     uint32 // 0 = normal
+}
+
+// overlayOpts: what the overlay shows, set on the Benchmark page.
+type overlayOpts struct {
+	Corner int             `json:"corner"`
+	Size   int             `json:"size"`           // 0 small, 1 normal, 2 large
+	Hide   map[string]bool `json:"hide,omitempty"` // rows switched off: fps, graph, gpu, vram, cpu, ram
 }
 
 type wndClassEx struct {
@@ -87,20 +116,159 @@ const (
 	wmEraseBkgnd  = 0x0014
 	wmNcHitTest   = 0x0084
 	wmTimer       = 0x0113
+	wmHotkey      = 0x0312
 	wmAppRefresh  = 0x8001
-	overlayW      = 210
-	overlayH      = 96
 	hwndTopmost   = ^uintptr(0) // (HWND)-1
 	swpNoMove     = 0x0002
 	swpNoSize     = 0x0001
 	swpNoActivate = 0x0010
 	swpShowWindow = 0x0040
+	ovHotkeyID    = 0x4154 // Ctrl + Shift + O shows/hides the overlay
+	// colours are 0x00BBGGRR
+	ovWhite = 0x00F4F2F0
+	ovLabel = 0x00FF8CB4 // purple
+	ovUnit  = 0x00A09890
+	ovGood  = 0x0078E08C // green
+	ovWarm  = 0x0040B4FF // orange
+	ovHot   = 0x005A5AFF // red
+	ovGraph = 0x0078E08C
 )
 
 func overlayOn() bool {
 	overlayMu.Lock()
 	defer overlayMu.Unlock()
 	return overlayHwnd != 0
+}
+
+func ovScale(size int) float64 { return []float64{0.85, 1, 1.25}[clampInt(size, 0, 2)] }
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+func sc(v float64, k float64) int32 { return int32(v*k + 0.5) }
+
+// makeGDI creates fonts and brushes for the overlay size (on the overlay's own thread).
+func (v *overlayView) makeGDI() {
+	if v.fBig != 0 && v.sizeMade == v.opts.Size {
+		return
+	}
+	for _, o := range []uintptr{v.fBig, v.fVal, v.fLbl, v.fUnit} {
+		if o != 0 {
+			procDeleteObject.Call(o)
+		}
+	}
+	k := ovScale(v.opts.Size)
+	face, _ := windows.UTF16PtrFromString("Bahnschrift")
+	mk := func(px float64, weight uintptr) uintptr {
+		f, _, _ := procCreateFontW.Call(uintptr(-sc(px, k)), 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, 5, 0, uintptr(unsafe.Pointer(face)))
+		return f
+	}
+	v.fBig, v.fVal, v.fLbl, v.fUnit = mk(30, 700), mk(17, 600), mk(14, 700), mk(12, 400)
+	if v.bg == 0 {
+		v.bg, _, _ = procCreateSolidBrush.Call(0x00140F0E)
+		v.graphBg, _, _ = procCreateSolidBrush.Call(0x00221A19)
+		v.penLine, _, _ = procCreatePen.Call(0, 2, ovGraph)
+		v.penGrid, _, _ = procCreatePen.Call(2, 1, 0x00403634) // dotted
+	}
+	v.sizeMade = v.opts.Size
+}
+
+// layout works out the window size for the current rows.
+func (v *overlayView) layout() {
+	k := ovScale(v.opts.Size)
+	h := 10.0
+	if v.waiting {
+		h += 44
+	} else {
+		if !v.opts.Hide["fps"] {
+			h += 36
+		}
+		h += float64(len(v.rows)) * 22
+		if !v.opts.Hide["graph"] && len(v.graph) > 2 {
+			h += 50
+		}
+	}
+	v.w, v.h = sc(340, k), sc(h+6, k)
+}
+
+func ovText(hdc uintptr, x, y int32, s string, font uintptr, color uint32) int32 {
+	if s == "" {
+		return 0
+	}
+	procSelectObject.Call(hdc, font)
+	procSetTextColor.Call(hdc, uintptr(color))
+	t, _ := windows.UTF16FromString(s)
+	procTextOutW.Call(hdc, uintptr(x), uintptr(y), uintptr(unsafe.Pointer(&t[0])), uintptr(len(t)-1))
+	var sz [2]int32
+	procGetTextExtentPoint32W.Call(hdc, uintptr(unsafe.Pointer(&t[0])), uintptr(len(t)-1), uintptr(unsafe.Pointer(&sz)))
+	return sz[0]
+}
+
+func (v *overlayView) paint(hdc uintptr) {
+	k := ovScale(v.opts.Size)
+	rc := [4]int32{0, 0, v.w, v.h}
+	procFillRect.Call(hdc, uintptr(unsafe.Pointer(&rc)), v.bg)
+	procSetBkMode.Call(hdc, 1) // transparent
+	x0, y := sc(12, k), sc(8, k)
+	if v.waiting {
+		ovText(hdc, x0, y, "ASTRO TWEAKS", v.fLbl, ovLabel)
+		ovText(hdc, x0, y+sc(20, k), "Waiting for a game…", v.fVal, ovWhite)
+		return
+	}
+	if !v.opts.Hide["fps"] {
+		w := ovText(hdc, x0, y, v.fps, v.fBig, ovWhite)
+		w2 := ovText(hdc, x0+w+sc(6, k), y+sc(13, k), "FPS", v.fLbl, ovLabel)
+		ovText(hdc, x0+w+w2+sc(16, k), y+sc(13, k), v.low, v.fUnit, ovUnit)
+		y += sc(36, k)
+	}
+	for _, r := range v.rows {
+		ovText(hdc, x0, y+sc(2, k), r.label, v.fLbl, ovLabel)
+		x := x0 + sc(52, k)
+		for _, c := range r.cells {
+			col := uint32(ovWhite)
+			if c.color != 0 {
+				col = c.color
+			}
+			w := ovText(hdc, x, y, c.val, v.fVal, col)
+			w2 := ovText(hdc, x+w+sc(2, k), y+sc(3, k), c.unit, v.fUnit, ovUnit)
+			x += w + w2 + sc(14, k)
+		}
+		y += sc(22, k)
+	}
+	if !v.opts.Hide["graph"] && len(v.graph) > 2 {
+		gx, gy, gw, gh := x0, y+sc(4, k), v.w-2*x0, sc(40, k)
+		grc := [4]int32{gx, gy, gx + gw, gy + gh}
+		procFillRect.Call(hdc, uintptr(unsafe.Pointer(&grc)), v.graphBg)
+		top := 0.0
+		for _, f := range v.graph {
+			if f > top {
+				top = f
+			}
+		}
+		if top < 20 {
+			top = 20
+		}
+		if top > 60 {
+			top = 60
+		}
+		pts := make([][2]int32, len(v.graph))
+		for i, f := range v.graph {
+			if f > top {
+				f = top
+			}
+			pts[i] = [2]int32{gx + int32(float64(gw-1)*float64(i)/float64(len(v.graph)-1)), gy + gh - 2 - int32(float64(gh-4)*f/top)}
+		}
+		procSelectObject.Call(hdc, v.penLine)
+		procPolyline.Call(hdc, uintptr(unsafe.Pointer(&pts[0])), uintptr(len(pts)))
+		ovText(hdc, gx+sc(4, k), gy+sc(2, k), "FRAME TIME", v.fUnit, ovUnit)
+	}
 }
 
 func overlayWndProc(hwnd, msg, wparam, lparam uintptr) uintptr {
@@ -112,34 +280,39 @@ func overlayWndProc(hwnd, msg, wparam, lparam uintptr) uintptr {
 	case wmTimer:
 		procSetWindowPos.Call(hwnd, hwndTopmost, 0, 0, 0, 0, swpNoMove|swpNoSize|swpNoActivate) // stay on top of the game
 		return 0
+	case wmHotkey:
+		if wparam == ovHotkeyID {
+			if vis, _, _ := procIsWindowVisible.Call(hwnd); vis != 0 {
+				procShowWindow.Call(hwnd, 0) // SW_HIDE
+			} else {
+				procShowWindow.Call(hwnd, 4) // SW_SHOWNOACTIVATE
+			}
+		}
+		return 0
 	case wmAppRefresh:
+		overlayMu.Lock()
+		ov.makeGDI()
+		oldW, oldH := ov.w, ov.h
+		ov.layout()
+		w, h, corner := ov.w, ov.h, ov.opts.Corner
+		overlayMu.Unlock()
+		if w != oldW || h != oldH {
+			x, y := overlayPos(corner, w, h)
+			procSetWindowPos.Call(hwnd, hwndTopmost, uintptr(x), uintptr(y), uintptr(w), uintptr(h), swpNoActivate)
+		}
 		procInvalidateRect.Call(hwnd, 0, 1)
 		return 0
 	case wmPaint:
 		var ps paintStruct
 		hdc, _, _ := procBeginPaint.Call(hwnd, uintptr(unsafe.Pointer(&ps)))
-		rc := [4]int32{0, 0, overlayW, overlayH}
-		procFillRect.Call(hdc, uintptr(unsafe.Pointer(&rc)), overlayBrush)
-		procSetBkMode.Call(hdc, 1) // transparent
 		overlayMu.Lock()
-		lines := append([]overlayLine(nil), overlayLines...)
+		ov.makeGDI()
+		ov.paint(hdc)
 		overlayMu.Unlock()
-		y := int32(8)
-		for _, l := range lines {
-			f := overlayFont
-			h := int32(20)
-			if l.big {
-				f, h = overlayFontBig, 30
-			}
-			procSelectObject.Call(hdc, f)
-			procSetTextColor.Call(hdc, uintptr(l.color))
-			t, _ := windows.UTF16FromString(l.text)
-			procTextOutW.Call(hdc, 12, uintptr(y), uintptr(unsafe.Pointer(&t[0])), uintptr(len(t)-1))
-			y += h
-		}
 		procEndPaint.Call(hwnd, uintptr(unsafe.Pointer(&ps)))
 		return 0
 	case wmClose:
+		procUnregisterHotKey.Call(hwnd, ovHotkeyID)
 		procDestroyWindow.Call(hwnd)
 		return 0
 	case wmDestroy:
@@ -150,30 +323,33 @@ func overlayWndProc(hwnd, msg, wparam, lparam uintptr) uintptr {
 	return r
 }
 
-// overlayCorner: 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right
-func overlayPos(corner int) (int32, int32) {
+// overlayPos: corner 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right
+func overlayPos(corner int, w, h int32) (int32, int32) {
 	sw, _, _ := procGetSystemMetrics.Call(0) // SM_CXSCREEN
 	sh, _, _ := procGetSystemMetrics.Call(1)
 	x, y := int32(14), int32(14)
 	if corner == 1 || corner == 3 {
-		x = int32(sw) - overlayW - 14
+		x = int32(sw) - w - 14
 	}
 	if corner == 2 || corner == 3 {
-		y = int32(sh) - overlayH - 60
+		y = int32(sh) - h - 60
 	}
 	return x, y
 }
 
-func overlayShow(corner int) error {
+func overlayShow(o overlayOpts) error {
 	overlayMu.Lock()
+	ov.opts = o
 	if overlayHwnd != 0 {
 		h := overlayHwnd
 		overlayMu.Unlock()
-		x, y := overlayPos(corner)
-		procSetWindowPos.Call(h, hwndTopmost, uintptr(x), uintptr(y), 0, 0, swpNoSize|swpNoActivate|swpShowWindow)
+		procPostMessageW.Call(h, wmAppRefresh, 0, 0)
+		procShowWindow.Call(h, 4)
 		return nil
 	}
-	overlayLines = []overlayLine{{"Astro Tweaks", 0x00FF7CA0, false}, {"Waiting for a game…", 0x00E6E6E6, false}}
+	ov.waiting = true
+	ov.layout()
+	w, h := ov.w, ov.h
 	overlayMu.Unlock()
 	ready := make(chan error, 1)
 	go func() {
@@ -197,22 +373,22 @@ func overlayShow(corner int) error {
 				return
 			}
 			overlayClassDone = true
-			overlayBrush, _, _ = procCreateSolidBrush.Call(0x00201614)
-			face, _ := windows.UTF16PtrFromString("Segoe UI")
-			overlayFontBig, _, _ = procCreateFontW.Call(^uintptr(25), 0, 0, 0, 700, 0, 0, 0, 1, 0, 0, 5, 0, uintptr(unsafe.Pointer(face))) // height -26
-			overlayFont, _, _ = procCreateFontW.Call(^uintptr(15), 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0, uintptr(unsafe.Pointer(face)))    // height -16
 		}
-		x, y := overlayPos(corner)
+		x, y := overlayPos(o.Corner, w, h)
 		const exStyle = 0x00000008 | 0x00080000 | 0x00000020 | 0x00000080 | 0x08000000 // TOPMOST|LAYERED|TRANSPARENT|TOOLWINDOW|NOACTIVATE
 		title, _ := windows.UTF16PtrFromString("Astro Tweaks overlay")
 		hwnd, _, err := procCreateWindowExW.Call(exStyle, uintptr(unsafe.Pointer(cls)), uintptr(unsafe.Pointer(title)), 0x80000000, // WS_POPUP
-			uintptr(x), uintptr(y), overlayW, overlayH, 0, 0, inst, 0)
+			uintptr(x), uintptr(y), uintptr(w), uintptr(h), 0, 0, inst, 0)
 		if hwnd == 0 {
 			ready <- fmt.Errorf("couldn't show the overlay (%v)", err)
 			return
 		}
-		procSetLayeredWindowAttribs.Call(hwnd, 0, 215, 2) // LWA_ALPHA: slightly see-through
-		procShowWindow.Call(hwnd, 4)                      // SW_SHOWNOACTIVATE
+		procSetLayeredWindowAttribs.Call(hwnd, 0, 225, 2) // LWA_ALPHA: slightly see-through
+		const modCtrl, modShift, modNoRepeat = 0x2, 0x4, 0x4000
+		if r, _, _ := procRegisterHotKey.Call(hwnd, ovHotkeyID, modCtrl|modShift|modNoRepeat, 'O'); r == 0 {
+			logf("Overlay: Ctrl+Shift+O is used by another app, so the show/hide key is off")
+		}
+		procShowWindow.Call(hwnd, 4) // SW_SHOWNOACTIVATE
 		procSetTimer.Call(hwnd, 1, 2000, 0)
 		overlayMu.Lock()
 		overlayHwnd = hwnd
@@ -245,6 +421,19 @@ func overlayHide() {
 	}
 }
 
+func tempColor(c, warm, hot float64) uint32 {
+	switch {
+	case c >= hot:
+		return ovHot
+	case c >= warm:
+		return ovWarm
+	}
+	return ovGood
+}
+
+func f0(v float64) string { return fmt.Sprintf("%.0f", v) }
+
+// overlayUpdate turns a monitor sample into the rows the overlay draws (Afterburner-style).
 func overlayUpdate(s benchSample) {
 	overlayMu.Lock()
 	h := overlayHwnd
@@ -252,32 +441,72 @@ func overlayUpdate(s benchSample) {
 		overlayMu.Unlock()
 		return
 	}
-	const purple, white, grey = 0x00FF7CA0, 0x00F2F2F2, 0x00B4AAA0
-	if s.PID == 0 || s.FPS == 0 {
-		overlayLines = []overlayLine{{"Astro Tweaks", purple, false}, {"Waiting for a game…", white, false}}
+	hide := ov.opts.Hide
+	ov.waiting = s.PID == 0 || s.FPS == 0
+	if !ov.waiting {
+		ov.fps = f0(s.FPS)
+		ov.low = ""
+		if s.Low1 > 0 {
+			ov.low = "1% LOW " + f0(s.Low1) + "   " + fmt.Sprintf("%.1f ms", s.FrameMs)
+		}
+		var rows []ovRow
+		if !hide["gpu"] {
+			r := ovRow{label: "GPU"}
+			if s.GPU >= 0 {
+				r.cells = append(r.cells, ovCell{val: f0(s.GPU), unit: "%"})
+			} else {
+				r.cells = append(r.cells, ovCell{val: "–"})
+			}
+			if t := s.Sensors.TempC; t >= 0 {
+				r.cells = append(r.cells, ovCell{val: f0(t), unit: "°C", color: tempColor(t, 75, 85)})
+			}
+			if s.Sensors.ClockMHz > 0 {
+				r.cells = append(r.cells, ovCell{val: f0(s.Sensors.ClockMHz), unit: "MHz"})
+			}
+			if s.Sensors.PowerW > 0 {
+				r.cells = append(r.cells, ovCell{val: f0(s.Sensors.PowerW), unit: "W"})
+			}
+			rows = append(rows, r)
+		}
+		if !hide["vram"] && s.Sensors.VRAMUsed >= 0 {
+			r := ovRow{label: "VRAM", cells: []ovCell{{val: fmt.Sprintf("%.1f", s.Sensors.VRAMUsed), unit: "GB"}}}
+			if s.Sensors.VRAMTot > 0 {
+				r.cells[0].unit = fmt.Sprintf("/ %.0f GB", s.Sensors.VRAMTot)
+			}
+			rows = append(rows, r)
+		}
+		if !hide["cpu"] {
+			r := ovRow{label: "CPU", cells: []ovCell{{val: f0(s.CPU), unit: "%"}}}
+			if s.CPUTemp >= 0 {
+				r.cells = append(r.cells, ovCell{val: f0(s.CPUTemp), unit: "°C", color: tempColor(s.CPUTemp, 80, 90)})
+			}
+			rows = append(rows, r)
+		}
+		if !hide["ram"] {
+			rows = append(rows, ovRow{label: "RAM", cells: []ovCell{{val: fmt.Sprintf("%.1f", s.RAMUsed), unit: "GB"}, {val: f0(s.RAMPct), unit: "%"}}})
+		}
+		ov.rows = rows
+		ov.graph = append(ov.graph, s.Frames...)
+		if len(ov.graph) > 600 {
+			ov.graph = ov.graph[len(ov.graph)-600:]
+		}
 	} else {
-		temp := ""
-		if s.Sensors.TempC >= 0 {
-			temp = fmt.Sprintf("  %.0f°C", s.Sensors.TempC)
-		}
-		gpu := "—"
-		if s.GPU >= 0 {
-			gpu = fmt.Sprintf("%.0f%%", s.GPU)
-		}
-		overlayLines = []overlayLine{
-			{fmt.Sprintf("%.0f FPS", s.FPS), white, true},
-			{fmt.Sprintf("1%% low %.0f   %.1f ms", s.Low1, s.FrameMs), purple, false},
-			{fmt.Sprintf("CPU %.0f%%   GPU %s%s", s.CPU, gpu, temp), grey, false},
-		}
+		ov.graph = nil
 	}
 	overlayMu.Unlock()
 	procPostMessageW.Call(h, wmAppRefresh, 0, 0)
 }
 
-// setOverlay is the switch on the Benchmark page.
-func setOverlay(on bool, corner int) error {
+func overlayOptsNow() overlayOpts {
 	stateMu.Lock()
-	appState.Overlay, appState.OverlayCorner = on, corner
+	defer stateMu.Unlock()
+	return overlayOpts{Corner: appState.OverlayCorner, Size: appState.OverlaySize, Hide: appState.OverlayHide}
+}
+
+// setOverlay is the switch and options on the Benchmark page.
+func setOverlay(on bool, o overlayOpts) error {
+	stateMu.Lock()
+	appState.Overlay, appState.OverlayCorner, appState.OverlaySize, appState.OverlayHide = on, o.Corner, o.Size, o.Hide
 	saveStateLocked()
 	stateMu.Unlock()
 	if !on {
@@ -287,20 +516,20 @@ func setOverlay(on bool, corner int) error {
 	if err := benchStart(); err != nil {
 		return err
 	}
-	return overlayShow(corner)
+	return overlayShow(o)
 }
 
 // overlayOnStart brings the overlay back if it was on last time.
 func overlayOnStart() {
 	defer func() { _ = recover() }()
 	stateMu.Lock()
-	on, corner := appState.Overlay, appState.OverlayCorner
+	on := appState.Overlay
 	stateMu.Unlock()
 	if !on || !isProUnlocked() || !isElevated() {
 		return
 	}
 	time.Sleep(3 * time.Second)
-	if err := setOverlay(true, corner); err != nil {
+	if err := setOverlay(true, overlayOptsNow()); err != nil {
 		logf("Overlay didn't start: %v", err)
 	}
 }

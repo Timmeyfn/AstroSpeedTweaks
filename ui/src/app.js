@@ -1356,7 +1356,7 @@ function benchOnLive(l) {
   B.live = l; B.err = l.error || '';
   if (l.frames && l.frames.length) { B.frames.push(...l.frames); if (B.frames.length > 1500) B.frames = B.frames.slice(-1500); }
   B.fpsHist.push(l.fps || 0); if (B.fpsHist.length > 120) B.fpsHist.shift();
-  if (S.page === 'bench') benchPaint();
+  if (S.page === 'bench') { benchPaint(); const w = $('.ov-prev-wrap'); if (w) { const o = overlayOptsUI(); w.outerHTML = overlayPreview(o.hide, o.size); } }
 }
 function benchTile(id, label, val, unit, cls = '') { return `<div class="bt ${cls}" id="${id}"><span>${label}</span><b>${val}<small>${unit}</small></b></div>`; }
 function benchPaint() {
@@ -1368,7 +1368,8 @@ function benchPaint() {
     benchTile('btMs', 'Frame time', l.frameMs ? l.frameMs.toFixed(1) : '–', 'ms'),
     benchTile('btCpu', 'CPU', fmt0(l.cpu), '%'),
     benchTile('btGpu', 'GPU', fmt0(l.gpu), '%'),
-    benchTile('btTemp', 'GPU temp', fmt0(s.tempC), '°C'),
+    benchTile('btTemp', 'GPU temp', s.tempC >= 0 ? fmt0(s.tempC) : '–', '°C'),
+    ...(l.cpuTemp >= 0 ? [benchTile('btCpuT', 'CPU temp', fmt0(l.cpuTemp), '°C')] : []),
     benchTile('btVram', 'VRAM', s.vramUsedGB >= 0 ? s.vramUsedGB.toFixed(1) : '–', s.vramTotalGB > 0 ? `/ ${s.vramTotalGB.toFixed(0)} GB` : 'GB'),
     benchTile('btRam', 'RAM', l.ramUsedGB ? l.ramUsedGB.toFixed(1) : '–', 'GB'),
   ].join('');
@@ -1424,16 +1425,56 @@ function viewBench() {
   <section class="panel spot"><div class="panel-h"><h2>Record a benchmark</h2></div><div class="panel-b">
     <p class="muted small" style="margin:0 0 12px">For a fair before and after, do the same thing both times, like the same Creative map or replay, for the whole run. Record <b>Before optimizing</b>, run Optimize, restart the game, then record <b>After optimizing</b>.</p>
     <div id="bRec"></div></div></section>
-  <section class="panel spot"><div class="panel-h"><h2>FPS overlay</h2>${locked ? `<span class="pro-tag">${ico('lock')}Key</span>` : ''}</div><div class="panel-b">
-    ${setRow('overlay', 'Show FPS on top of your game', 'A small box in the corner with FPS, 1% low, CPU, GPU and temperature. It’s a normal window, not injected into the game, so it’s safe with anti-cheat. Shows over games in windowed or borderless (windowed fullscreen) mode.', !!d.overlay)}
-    <label class="optline" style="margin-top:10px">Corner <select id="ovCorner">${['Top left', 'Top right', 'Bottom left', 'Bottom right'].map((t, i) => `<option value="${i}"${(d.overlayCorner || 0) === i ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
-  </div></section>
+  ${overlayPanel(d, locked)}
   <section class="panel spot"><div class="panel-h"><h2>Your runs</h2></div><div class="panel-b">
     ${B.results === null ? '<p class="dim">Loading…</p>' : !res.length ? '<p class="dim">No benchmarks yet. Start a game and press Record.</p>' : `<table class="btable"><thead><tr><th>When</th><th>Game</th><th>Label</th><th>Avg FPS</th><th>1% low</th><th>0.1% low</th><th>Stutters</th><th></th></tr></thead><tbody>
       ${res.map(r => `<tr><td>${esc(fmtDate(new Date(r.when).toISOString()))}</td><td>${esc(r.game)}</td><td>${esc(benchLabelName(r.label))}</td><td><b>${fmt0(r.stats.avgFps)}</b></td><td>${fmt0(r.stats.low1)}</td><td>${fmt0(r.stats.low01)}</td><td>${r.stats.stutters}</td><td><button class="btn sm quiet" data-act="benchDel" data-id="${esc(r.id)}" type="button" aria-label="Delete">${ico('x')}</button></td></tr>`).join('')}
     </tbody></table>`}
   </div></section>`;
 }
+// The in-game overlay (Afterburner-style): settings + a live preview of what it will look like.
+const OV_ROWS = [['fps', 'FPS and 1% low'], ['gpu', 'GPU: usage, temp, clock, power'], ['vram', 'Video memory'], ['cpu', 'CPU: usage and temp'], ['ram', 'RAM'], ['graph', 'Frame time graph']];
+function overlayOptsUI() {
+  const d = S.data, hide = {};
+  document.querySelectorAll('[data-ovrow]').forEach(c => { if (!c.checked) hide[c.dataset.ovrow] = true; });
+  return { corner: +(($('#ovCorner') || {}).value ?? d.overlayCorner ?? 0), size: +(($('#ovSize') || {}).value ?? d.overlaySize ?? 1), hide };
+}
+function overlayPanel(d, locked) {
+  const hide = d.overlayHide || {}, size = d.overlaySize ?? 1;
+  return `<section class="panel spot"><div class="panel-h"><h2>In-game overlay</h2>${locked ? `<span class="pro-tag">${ico('lock')}Key</span>` : ''}</div><div class="panel-b ovp">
+    <div>
+      ${setRow('overlay', 'Show stats on top of your game', 'Like MSI Afterburner: FPS, frame time graph, GPU usage, temperature, clock and power, CPU, RAM and video memory, in a corner of the screen while you play. It’s a separate window, not injected into the game, so it’s safe with anti-cheat. Shows over games in windowed or borderless (windowed fullscreen) mode, which is Fortnite’s default.', !!d.overlay)}
+      <div class="ov-opts">
+        <label class="optline">Corner <select id="ovCorner" data-ovopt>${['Top left', 'Top right', 'Bottom left', 'Bottom right'].map((t, i) => `<option value="${i}"${(d.overlayCorner || 0) === i ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label class="optline">Size <select id="ovSize" data-ovopt>${['Small', 'Normal', 'Large'].map((t, i) => `<option value="${i}"${size === i ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      </div>
+      <div class="ov-rows">${OV_ROWS.map(([k, t]) => `<label class="cbline"><input class="cb" type="checkbox" data-ovrow="${k}" data-ovopt${hide[k] ? '' : ' checked'}> ${t}</label>`).join('')}</div>
+      <p class="dim small" style="margin:10px 0 0">In game, press <b>Ctrl + Shift + O</b> to hide or show it. GPU temperature, clock and power need an NVIDIA card. CPU temperature shows only on PCs where Windows reports a real CPU sensor.</p>
+    </div>
+    ${overlayPreview(hide, size)}
+  </div></section>`;
+}
+function overlayPreview(hide, size) {
+  const l = B.live || {}, s = l.sensors || {}, k = [0.85, 1, 1.25][size] || 1;
+  const v = (x, d = 0) => (x == null || x < 0 || !isFinite(x)) ? '–' : (+x).toFixed(d);
+  const rows = [];
+  if (!hide.gpu) rows.push(['GPU', [[v(l.gpu ?? 97), '%'], [v(s.tempC ?? 66), '°C', 'warm'], [v(s.clockMHz ?? 2610), 'MHz'], [v(s.powerW ?? 214), 'W']]]);
+  if (!hide.vram) rows.push(['VRAM', [[v(s.vramUsedGB ?? 6.1, 1), s.vramTotalGB > 0 ? `/ ${v(s.vramTotalGB)} GB` : 'GB']]]);
+  if (!hide.cpu) rows.push(['CPU', [[v(l.cpu ?? 46), '%'], ...(l.cpuTemp >= 0 ? [[v(l.cpuTemp), '°C', 'good']] : [])]]);
+  if (!hide.ram) rows.push(['RAM', [[v(l.ramUsedGB ?? 14.9, 1), 'GB'], [v(l.ramPct ?? 47), '%']]]);
+  return `<div class="ov-prev-wrap"><span class="dim small">Preview</span><div class="ov-prev" style="--k:${k}">
+    ${hide.fps ? '' : `<div class="ovp-fps"><b>${v(l.fps || 221)}</b><i>FPS</i><span>1% LOW ${v(l.low1 || 161)}   ${l.frameMs ? l.frameMs.toFixed(1) : '4.5'} ms</span></div>`}
+    ${rows.map(([lab, cells]) => `<div class="ovp-row"><i>${lab}</i>${cells.map(([a, u, c]) => `<span class="${c || ''}"><b>${a}</b><small>${u}</small></span>`).join('')}</div>`).join('')}
+    ${hide.graph ? '' : `<div class="ovp-graph"><small>FRAME TIME</small><svg viewBox="0 0 100 30" preserveAspectRatio="none"><polyline points="${Array.from({ length: 50 }, (_, i) => `${i * 2.04},${(i % 13 === 7 ? 6 : 21 + Math.sin(i) * 2).toFixed(1)}`).join(' ')}"/></svg></div>`}
+  </div></div>`;
+}
+async function saveOverlayOpts() {
+  const o = overlayOptsUI();
+  S.data.overlayCorner = o.corner; S.data.overlaySize = o.size; S.data.overlayHide = o.hide;
+  const wrap = $('.ov-prev-wrap'); if (wrap) wrap.outerHTML = overlayPreview(o.hide, o.size);
+  if (S.data.overlay) { try { await api('overlaySet', Object.assign({ on: true }, o)); } catch (err) { toast(err.message, 'err', 6000); } }
+}
+
 // The share card: drawn on a canvas, saved to Pictures\Astro Tweaks.
 function benchShare(before, after) {
   const c = document.createElement('canvas'); c.width = 1080; c.height = 1080;
@@ -2004,9 +2045,9 @@ document.addEventListener('click', async e => {
       if (key === 'motion') { applyMotion(document.documentElement.classList.contains('motion-off'), true); rerenderView(); break; }
       if ((key === 'autoboost' || key === 'hotkey' || key === 'autoClean' || key === 'memGuard' || key === 'autoReapply' || key === 'overlay') && !proUnlocked()) { showUpgrade(); break; }
       if (key === 'overlay') {
-        const want = !S.data.overlay, corner = +(($('#ovCorner') || {}).value || 0);
+        const want = !S.data.overlay, o = overlayOptsUI();
         b.disabled = true;
-        try { await api('overlaySet', { on: want, corner }); S.data.overlay = want; S.data.overlayCorner = corner; toast(want ? 'Overlay on. It shows over games in windowed or borderless mode.' : 'Overlay off.', 'ok'); } catch (err) { toast(err.message, 'err', 7000); }
+        try { await api('overlaySet', Object.assign({ on: want }, o)); S.data.overlay = want; S.data.overlayCorner = o.corner; S.data.overlaySize = o.size; S.data.overlayHide = o.hide; toast(want ? 'Overlay on. Press Ctrl+Shift+O in game to hide or show it.' : 'Overlay off.', 'ok', 5000); } catch (err) { toast(err.message, 'err', 7000); }
         rerenderView(); break;
       }
       if (key === 'defaultBat') {
@@ -2148,6 +2189,7 @@ document.addEventListener('change', e => {
   if (c.id === 'lpRegion') { S.livePing.region = c.value; S.livePing.samples = []; drawLivePing(); }
   if (c.dataset.bg) { c.checked ? S.bgSel.add(c.dataset.bg) : S.bgSel.delete(c.dataset.bg); }
   if (c.dataset.clean) { c.checked ? S.cleanSel.add(c.dataset.clean) : S.cleanSel.delete(c.dataset.clean); rerenderView(); }
+  if (c.dataset.ovopt !== undefined) saveOverlayOpts();
 });
 
 let searchTimer;

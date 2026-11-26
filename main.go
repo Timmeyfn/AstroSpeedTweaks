@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "2.6.0"
+const AppVersion = "2.7.0"
 
 // versionMarker lets the admin page read the version straight out of an uploaded exe.
 const versionMarker = "ASTROSPEED_VERSION=" + AppVersion + ";"
@@ -345,10 +345,10 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		stateMu.Lock()
 		autoBoost, hotkey, autoUpdate := appState.AutoBoost, appState.Hotkey, !appState.NoAutoUpdate
 		autoClean, memGuard, lastAutoClean := appState.AutoClean, appState.MemGuard, appState.LastAutoClean
-		autoReapply, overlay, overlayCorner := !appState.AutoReapplyOff, appState.Overlay, appState.OverlayCorner
+		autoReapply, overlay, overlayCorner, overlaySize, overlayHide := !appState.AutoReapplyOff, appState.Overlay, appState.OverlayCorner, appState.OverlaySize, appState.OverlayHide
 		stateMu.Unlock()
 		return map[string]interface{}{
-			"version": AppVersion, "license": licenseStatusNow(), "afterUpdate": launchedAfterUpdate, "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "defaultBat": defaultBatInfo(), "autoClean": autoClean, "memGuard": memGuard, "lastAutoClean": lastAutoClean, "autoReapply": autoReapply, "overlay": overlay, "overlayCorner": overlayCorner, "windowsUpdated": windowsUpdatedSinceLastRun(), "server": serverURL(), "updateConfigured": updateCheckURL() != "", "pack": packStatus(),
+			"version": AppVersion, "license": licenseStatusNow(), "afterUpdate": launchedAfterUpdate, "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "defaultBat": defaultBatInfo(), "autoClean": autoClean, "memGuard": memGuard, "lastAutoClean": lastAutoClean, "autoReapply": autoReapply, "overlay": overlay, "overlayCorner": overlayCorner, "overlaySize": overlaySize, "overlayHide": overlayHide, "windowsUpdated": windowsUpdatedSinceLastRun(), "server": serverURL(), "updateConfigured": updateCheckURL() != "", "pack": packStatus(),
 			"tweakCount": n, "actionCount": acts, "env": getEnv(), "admin": isElevated(),
 			"profile": profile, "totalChanges": total, "lastOptimize": last, "restorePoints": rps,
 			"cleanTargets": cleanTargets, "dataDir": dataDir, "lastCrash": lastCrash,
@@ -544,11 +544,11 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		return p, err
 	case "overlaySet":
 		var a struct {
-			On     bool `json:"on"`
-			Corner int  `json:"corner"`
+			On bool `json:"on"`
+			overlayOpts
 		}
 		_ = parseArgs(args, &a)
-		return nil, setOverlay(a.On, a.Corner)
+		return nil, setOverlay(a.On, a.overlayOpts)
 
 	// ── Fortnite settings tuner ──
 	case "fnSettings":

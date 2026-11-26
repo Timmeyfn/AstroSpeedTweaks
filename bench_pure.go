@@ -86,3 +86,9 @@ type benchResult struct {
 	GPUTemp float64    `json:"gpuTemp"`
 	Graph   []float64  `json:"graph"` // FPS per second, for the chart
 }
+
+// plausibleCPUTemp hides thermal-zone readings that aren't a real CPU sensor: missing, out of range,
+// or the fixed ~27.8°C many desktops report.
+func plausibleCPUTemp(c float64) bool {
+	return c >= 30 && c <= 110
+}

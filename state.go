@@ -73,6 +73,8 @@ type State struct {
 	Benchmarks         []benchResult          `json:"benchmarks,omitempty"`
 	Overlay            bool                   `json:"overlay,omitempty"`
 	OverlayCorner      int                    `json:"overlayCorner,omitempty"`
+	OverlaySize        int                    `json:"overlaySize,omitempty"`
+	OverlayHide        map[string]bool        `json:"overlayHide,omitempty"`
 	AutoReapplyOff     bool                   `json:"autoReapplyOff,omitempty"` // fixing tweaks Windows changed back is on unless switched off
 	LastBuild          int                    `json:"lastBuild,omitempty"`
 }
