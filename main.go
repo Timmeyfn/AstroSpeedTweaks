@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const AppVersion = "2.4.0"
+const AppVersion = "2.5.0"
 
 // versionMarker lets the admin page read the version straight out of an uploaded exe.
 const versionMarker = "ASTROSPEED_VERSION=" + AppVersion + ";"
@@ -106,6 +106,7 @@ func main() {
 	cleanupOldUpdate()
 	setupCrashLog()
 	defer markCleanExit()
+	defer stopFrameCounter() // the FPS counter is a Windows trace session: always close it
 	loadState()
 	logf("Astro Tweaks %s started (admin: %v)", AppVersion, isElevated())
 
@@ -137,6 +138,8 @@ func main() {
 		}
 	}
 	go startDefaultBat()
+	go reapplyOnStart()
+	go overlayOnStart()
 	go autoCleanOnStart()
 	go memGuardLoop()
 	logf("Detected: %s | %s | %.0f GB RAM | Fortnite: %v", curEnv.OSName, curEnv.CPU, curEnv.RAMGB, curEnv.FortniteExe != "")
@@ -342,9 +345,10 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		stateMu.Lock()
 		autoBoost, hotkey, autoUpdate := appState.AutoBoost, appState.Hotkey, !appState.NoAutoUpdate
 		autoClean, memGuard, lastAutoClean := appState.AutoClean, appState.MemGuard, appState.LastAutoClean
+		autoReapply, overlay, overlayCorner := !appState.AutoReapplyOff, appState.Overlay, appState.OverlayCorner
 		stateMu.Unlock()
 		return map[string]interface{}{
-			"version": AppVersion, "license": licenseStatusNow(), "afterUpdate": launchedAfterUpdate, "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "defaultBat": defaultBatInfo(), "autoClean": autoClean, "memGuard": memGuard, "lastAutoClean": lastAutoClean, "server": serverURL(), "updateConfigured": updateCheckURL() != "", "pack": packStatus(),
+			"version": AppVersion, "license": licenseStatusNow(), "afterUpdate": launchedAfterUpdate, "categories": Categories, "catalog": tw, "games": Games, "autoBoost": autoBoost, "hotkey": hotkey, "autoUpdate": autoUpdate, "defaultBat": defaultBatInfo(), "autoClean": autoClean, "memGuard": memGuard, "lastAutoClean": lastAutoClean, "autoReapply": autoReapply, "overlay": overlay, "overlayCorner": overlayCorner, "windowsUpdated": windowsUpdatedSinceLastRun(), "server": serverURL(), "updateConfigured": updateCheckURL() != "", "pack": packStatus(),
 			"tweakCount": n, "actionCount": acts, "env": getEnv(), "admin": isElevated(),
 			"profile": profile, "totalChanges": total, "lastOptimize": last, "restorePoints": rps,
 			"cleanTargets": cleanTargets, "dataDir": dataDir, "lastCrash": lastCrash,
@@ -494,6 +498,74 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 		return gameIcons(), nil
 	case "live":
 		return readLive(), nil
+
+	// ── benchmark, overlay ──
+	case "benchStart":
+		return benchLive(), benchStart()
+	case "benchLive":
+		return benchLive(), nil
+	case "benchTargets":
+		return benchTargets(), nil
+	case "benchTarget":
+		var a struct {
+			PID uint32 `json:"pid"`
+		}
+		_ = parseArgs(args, &a)
+		benchSetTarget(a.PID)
+		return nil, nil
+	case "benchRecord":
+		var a struct {
+			Seconds int    `json:"seconds"`
+			Label   string `json:"label"`
+		}
+		_ = parseArgs(args, &a)
+		return nil, benchRecord(a.Seconds, a.Label)
+	case "benchCancel":
+		benchCancel()
+		return nil, nil
+	case "benchList":
+		return benchList(), nil
+	case "benchDelete":
+		var a struct {
+			ID string `json:"id"`
+		}
+		_ = parseArgs(args, &a)
+		benchDelete(a.ID)
+		return benchList(), nil
+	case "benchSaveImage":
+		var a struct {
+			PNG []byte `json:"png"` // base64 in JSON
+		}
+		_ = parseArgs(args, &a)
+		p, err := saveBenchImage(a.PNG)
+		if err == nil {
+			_ = shellOpen(filepath.Dir(p))
+		}
+		return p, err
+	case "overlaySet":
+		var a struct {
+			On     bool `json:"on"`
+			Corner int  `json:"corner"`
+		}
+		_ = parseArgs(args, &a)
+		return nil, setOverlay(a.On, a.Corner)
+
+	// ── Fortnite settings tuner ──
+	case "fnSettings":
+		return fnSettingsInfo(), nil
+	case "fnApply":
+		var a struct {
+			Preset string `json:"preset"`
+			Cap    int    `json:"cap"`
+		}
+		_ = parseArgs(args, &a)
+		return fnApply(a.Preset, a.Cap)
+	case "fnRestore":
+		return fnRestore()
+
+	// ── tweaks Windows changed back ──
+	case "resetTweaks":
+		return resetTweakIDs(), nil
 	case "drives":
 		return drives(), nil
 	case "licenseStatus":
@@ -551,12 +623,15 @@ func handle(method string, args json.RawMessage) (interface{}, error) {
 			}
 		case "defaultBat":
 			err = setDefaultBat(a.On)
-		case "autoClean", "memGuard":
+		case "autoClean", "memGuard", "autoReapply":
 			stateMu.Lock()
-			if a.Key == "autoClean" {
+			switch a.Key {
+			case "autoClean":
 				appState.AutoClean = a.On
-			} else {
+			case "memGuard":
 				appState.MemGuard = a.On
+			default:
+				appState.AutoReapplyOff = !a.On
 			}
 			saveStateLocked()
 			stateMu.Unlock()

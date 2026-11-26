@@ -57,7 +57,7 @@ const (
 )
 
 var Categories = []Category{
-	{ID: "fortnite", Title: "Fortnite", Subtitle: "Priority, GPU choice, fullscreen and network marking for the Fortnite process only. Your in-game settings and keybinds are never opened.", Icon: "fortnite", Game: "fortnite"},
+	{ID: "fortnite", Title: "Fortnite", Subtitle: "Priority, GPU choice, fullscreen and network marking for Fortnite, plus a settings tuner for more FPS. Your sensitivity and keybinds are never touched.", Icon: "fortnite", Game: "fortnite"},
 	{ID: "gaming", Title: "Windows gaming", Subtitle: "Game Mode, background recording, fullscreen and windowed-game behaviour.", Icon: "gamepad", Nav: "Gaming"},
 	{ID: "cpu", Title: "CPU & scheduler", Subtitle: "How Windows shares CPU time between the game and everything else.", Icon: "cpu", Nav: "CPU"},
 	{ID: "power", Title: "Power", Subtitle: "Stops Windows clocking down your CPU, PCIe and USB to save power while you play.", Icon: "bolt"},

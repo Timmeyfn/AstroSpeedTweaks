@@ -141,6 +141,8 @@ func applyUpdate() (interface{}, error) {
 	}
 	logf("Update applied, relaunching")
 	markCleanExit() // a planned restart, not a crash
+	stopFrameCounter()
+	overlayHide()
 	if instanceMutex != 0 {
 		windows.CloseHandle(instanceMutex) // let the new copy start
 		instanceMutex = 0

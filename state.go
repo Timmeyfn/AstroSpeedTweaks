@@ -54,22 +54,27 @@ type RestorePoint struct {
 }
 
 type State struct {
-	Version       int                    `json:"version"`
-	FirstRun      time.Time              `json:"firstRun"`
-	Seq           int                    `json:"seq"`
-	Tweaks        map[string]*TweakState `json:"tweaks"`
-	RestorePoints []RestorePoint         `json:"restorePoints"`
-	TotalChanges  int                    `json:"totalChanges"`
-	LastOptimize  time.Time              `json:"lastOptimize"`
-	Profile       int                    `json:"profile"`
-	AutoBoost     bool                   `json:"autoBoost"`
-	Hotkey        bool                   `json:"hotkey"`
-	NoAutoUpdate  bool                   `json:"noAutoUpdate"`
-	DefaultBatOff bool                   `json:"defaultBatOff,omitempty"`
-	DefaultBatAnswered string             `json:"defaultBatAnswered,omitempty"` // which version of the .bat they answered for
-	AutoClean     bool                   `json:"autoClean,omitempty"`
-	LastAutoClean time.Time              `json:"lastAutoClean,omitempty"`
-	MemGuard      bool                   `json:"memGuard,omitempty"`
+	Version            int                    `json:"version"`
+	FirstRun           time.Time              `json:"firstRun"`
+	Seq                int                    `json:"seq"`
+	Tweaks             map[string]*TweakState `json:"tweaks"`
+	RestorePoints      []RestorePoint         `json:"restorePoints"`
+	TotalChanges       int                    `json:"totalChanges"`
+	LastOptimize       time.Time              `json:"lastOptimize"`
+	Profile            int                    `json:"profile"`
+	AutoBoost          bool                   `json:"autoBoost"`
+	Hotkey             bool                   `json:"hotkey"`
+	NoAutoUpdate       bool                   `json:"noAutoUpdate"`
+	DefaultBatOff      bool                   `json:"defaultBatOff,omitempty"`
+	DefaultBatAnswered string                 `json:"defaultBatAnswered,omitempty"` // which version of the .bat they answered for
+	AutoClean          bool                   `json:"autoClean,omitempty"`
+	LastAutoClean      time.Time              `json:"lastAutoClean,omitempty"`
+	MemGuard           bool                   `json:"memGuard,omitempty"`
+	Benchmarks         []benchResult          `json:"benchmarks,omitempty"`
+	Overlay            bool                   `json:"overlay,omitempty"`
+	OverlayCorner      int                    `json:"overlayCorner,omitempty"`
+	AutoReapplyOff     bool                   `json:"autoReapplyOff,omitempty"` // fixing tweaks Windows changed back is on unless switched off
+	LastBuild          int                    `json:"lastBuild,omitempty"`
 }
 
 var (

@@ -29,10 +29,12 @@ func paidTool(method string, args []byte) bool {
 	switch method {
 	case "cleanRun", "startupSet", "boostPurge", "boostPriority", "bgClose", "dnsSet":
 		return true
-	case "boostTimer", "setAutoBoost":
+	case "boostTimer", "setAutoBoost", "overlaySet":
 		return a.On
+	case "fnApply":
+		return true
 	case "setSetting":
-		return (a.Key == "hotkey" || a.Key == "autoClean" || a.Key == "memGuard") && a.On
+		return (a.Key == "hotkey" || a.Key == "autoClean" || a.Key == "memGuard" || a.Key == "autoReapply") && a.On
 	}
 	return false
 }

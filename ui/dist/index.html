@@ -748,6 +748,55 @@ table.ping{width:100%;border-collapse:collapse;font-size:14px}
 .bat-cmds summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--accent)}
 .bat-cmds pre{margin:10px 0 0;max-height:220px;overflow:auto;padding:12px 14px;border-radius:12px;background:var(--bg-2, rgba(0,0,0,.04));border:1px solid var(--line);font:12.5px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all}
 
+/* ── benchmark ── */
+.btiles{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px;margin-bottom:14px}
+@media (max-width:1250px){.btiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.bt{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--card-2);display:flex;flex-direction:column;gap:4px;min-width:0}
+.bt span{font-size:12px;font-weight:700;color:var(--ink-2);letter-spacing:.02em}
+.bt b{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt b small{font-size:12px;font-weight:700;color:var(--ink-2);margin-left:4px}
+.bt.big{background:linear-gradient(140deg,var(--accent),#A07CFF);border-color:transparent;color:#fff}
+.bt.big span,.bt.big b small{color:rgba(255,255,255,.85)}
+.bt.big b{font-size:32px}
+.bchart{height:190px}
+.brec-form{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.brec-form label,.optline{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.optline{flex-direction:row;align-items:center;gap:10px}
+.brec-form select,.optline select{height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card-2);color:var(--ink);padding:0 10px;font:inherit;font-weight:600}
+.brec-on{display:flex;flex-direction:column;gap:10px}
+.bcompare{border:1.5px solid var(--accent);margin-bottom:18px;background:linear-gradient(120deg,var(--accent-soft),transparent 70%)}
+.bc-big{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:6px 0 14px}
+.bc-big span{font-size:44px;font-weight:800;color:var(--ink-2);letter-spacing:-.03em}
+.bc-big svg{width:28px;height:28px;color:var(--accent);align-self:center}
+.bc-big b{font-size:64px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.bc-big small{font-size:14px;font-weight:700;color:var(--ink-2)}
+.bc-big em,.bc-row em{font-style:normal;font-weight:800;padding:4px 10px;border-radius:999px;font-size:14px}
+.up{background:rgba(46,138,87,.14);color:var(--ok)}
+.down{background:rgba(196,61,73,.12);color:#C43D49}
+.bc-row{display:flex;gap:28px;flex-wrap:wrap;margin-bottom:12px}
+.bc-row div{display:flex;flex-direction:column;gap:2px}
+.bc-row span{font-size:12px;font-weight:700;color:var(--ink-2)}
+.bc-row b{font-size:18px}
+.bc-row em{align-self:flex-start;font-size:12px;padding:2px 8px}
+.btable{width:100%;border-collapse:collapse;font-size:13.5px}
+.btable th{text-align:left;font-size:12px;color:var(--ink-2);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line)}
+.btable td{padding:9px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.btable tr:last-child td{border-bottom:0}
+.bpick{display:flex;flex-direction:column;gap:8px}
+.bpick .btn{justify-content:flex-start;gap:12px;height:auto;padding:12px 16px}
+/* ── Fortnite tuner ── */
+.fncard{margin-top:16px}
+.fn-now{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.fn-now div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card-2)}
+.fn-now span{display:block;font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.fn-now b{font-size:15px}
+.fn-presets{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+@media (max-width:900px){.fn-presets{grid-template-columns:1fr}}
+.fn-p{text-align:left;border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--card-2);cursor:pointer;display:flex;flex-direction:column;gap:4px;font:inherit;color:inherit;transition:border-color .2s,box-shadow .2s}
+.fn-p span{font-size:13px;color:var(--ink-2)}
+.fn-p.sel{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.resetbar{margin:0 0 18px}
+
 </style>
 </head>
 <body>
@@ -888,6 +937,7 @@ const P = {
   pause: '<path d="M8 5v14M16 5v14"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
   pulse: '<path d="M2.5 12h4l2.5-6 4.5 12 2.5-6h5.5"/>',
+  gauge: '<path d="M4.5 18a8.5 8.5 0 1 1 15 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.4"/>',
   monitor: '<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8.5 21h7M12 17v4"/>',
   clock: '<circle cx="12" cy="12" r="9.5"/><path d="M12 7v5l3.5 2"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>'
@@ -935,6 +985,7 @@ const paidToolPages = { booster: 'Game booster', cleaner: 'System cleaner', star
 
 const toolPages = [
   { id: 'checkup', title: 'PC checkup', icon: 'pulse', sub: 'A full scan of what is holding your FPS back, with a score and one-click fixes.' },
+  { id: 'bench', title: 'Benchmark', icon: 'gauge', sub: 'Live FPS, 1% lows, frame times, CPU and GPU, like an in-game monitor. Record a run before and after optimizing to see the real difference.' },
   { id: 'booster', title: 'Game booster', icon: 'rocket', sub: 'One-tap actions to run right before you queue: clear memory, tighten the timer, close background apps.' },
   { id: 'cleaner', title: 'System cleaner', icon: 'broom', sub: 'Clears temp files, caches and leftovers. Your game settings, keybinds and replays are never touched.' },
   { id: 'startup', title: 'Startup apps', icon: 'power', sub: 'Choose what launches with Windows. Uses the same switch as Task Manager, so you can change it back there too.' },
@@ -1011,7 +1062,7 @@ function render() {
   else {
     const p = [...toolPages, ...safetyPages].find(x => x.id === S.page);
     title = p.title; sub = p.sub;
-    const inner = ({ checkup: viewCheckup, booster: viewBooster, cleaner: viewCleaner, startup: viewStartup, network: viewNetwork, safety: viewSafety, about: viewAbout, settings: viewSettings })[S.page]();
+    const inner = ({ bench: viewBench, checkup: viewCheckup, booster: viewBooster, cleaner: viewCleaner, startup: viewStartup, network: viewNetwork, safety: viewSafety, about: viewAbout, settings: viewSettings })[S.page]();
     v.innerHTML = paidToolPages[S.page] && !proUnlocked() ? toolPaywall(S.page, inner) : inner;
     afterTool();
   }
@@ -1100,6 +1151,7 @@ function viewDashboard() {
   </section>
   <div class="ribbon" aria-hidden="true"><div class="ribbon-track">${ribbonWords()}${ribbonWords()}</div></div>
   ${freeUser ? dashUpsell(ps) : ''}
+  ${resetBanner()}
   <div class="dash-row">${liveHTML()}${yourGamesHTML()}</div>
   <div class="dash-grid">
     <div class="panel spot"><div class="panel-h"><h2>This PC</h2><button class="btn sm quiet" data-act="reprobe" type="button">${ico('reboot')}Rescan</button></div><div class="panel-b">${specList()}</div></div>
@@ -1559,6 +1611,7 @@ function viewSettings() {
       ${setRow('memGuard', 'Keep memory clear while you play', 'If your RAM gets nearly full during a game, Astro Tweaks clears Windows’ standby memory (at most every 5 minutes) so the game isn’t starved.', d.memGuard, paidTag())}
     </div></div>
     <div class="panel spot"><div class="panel-h"><h2>Maintenance</h2></div><div class="panel-b">
+      ${setRow('autoReapply', 'Fix tweaks Windows changes back', 'Big Windows updates often undo tweaks. When Astro Tweaks opens, it quietly switches them back on and tells you how many it fixed.', d.autoReapply, paidTag())}
       ${setRow('autoClean', 'Clean up automatically every week', 'Clears temp files and caches once a week while Astro Tweaks is open. The Recycle Bin is never emptied automatically.', d.autoClean, paidTag() + (d.lastAutoClean && fmtDate(d.lastAutoClean) ? `<span class="dim small" style="display:block;margin-top:4px">Last run ${esc(fmtDate(d.lastAutoClean))}</span>` : ''))}
     </div></div>
     <div class="panel spot"><div class="panel-h"><h2>Startup</h2></div><div class="panel-b">
@@ -1646,6 +1699,14 @@ async function reloadCatalog(info) {
   } catch (e) { /* keep what is on screen */ }
 }
 
+// Tweaks Windows changed back (usually a Windows update).
+function resetBanner() {
+  const ids = T().filter(t => st(t.id) === 'reset').map(t => t.id);
+  if (!ids.length) return '';
+  const why = S.data.windowsUpdated ? 'after a Windows update' : 'since you applied them';
+  return `<section class="paybar resetbar"><span class="pb-ico">${ico('reboot')}</span><div class="pb-t"><b>Windows changed back ${plural(ids.length, 'of your tweaks', 'of your tweaks')} ${why}</b><small>${S.data.autoReapply ? 'Astro Tweaks fixes these by itself when it opens.' : 'Fix them in one click, or let Astro Tweaks do it by itself (Settings).'}</small></div><button class="btn primary" data-act="fixReset" type="button">${ico('check')}Fix them</button></section>`;
+}
+
 // ───────────────────────── licence (free vs key) ─────────────────────────
 function dashUpsell(ps) {
   const lockedPct = ps.total ? Math.round(ps.locked / ps.total * 100) : 0;
@@ -1677,8 +1738,8 @@ function showUpgrade() {
     <div class="dialog-h up-h"><div><div class="eyebrow">${ico('lock')}Astro Tweaks full version</div><h2>${esc(title)}</h2><p>${ps.locked ? `Your PC is <b>${ps.pct}% optimized</b>. <b>${ps.locked}</b> of the fixes Astro Tweaks found for it are locked on the free version.` : 'One key unlocks every tweak and tool in Astro Tweaks.'}</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
     <div class="dialog-b">
       <div class="up-grid">
-        <div class="up-col"><h4>Free</h4><ul>${['Dashboard & PC Checkup scan', 'Ping test', `${plural(ps.free, 'free tweak')}`, 'Undo & restore'].map(x => `<li>${ico('check', 'ico-ok')}${x}</li>`).join('')}</ul></div>
-        <div class="up-col pro"><h4>${ico('lock')}Full version${price ? ` <span class="up-price">${esc(price)}</span>` : ''}</h4><ul>${[`All ${ps.total} tweaks for this PC${ps.high ? ` (${ps.high} high-impact)` : ''}`, 'One-click Optimize: Recommended & Competitive', 'Every per-game tweak', 'Game booster, cleaner & startup manager', 'Auto-boost, the boost hotkey & DNS switcher', 'New live tweaks and every update'].map(x => `<li>${ico('check', 'ico-ok')}${x}</li>`).join('')}</ul></div>
+        <div class="up-col"><h4>Free</h4><ul>${['Dashboard & PC Checkup scan', 'Ping test & FPS benchmark', `${plural(ps.free, 'free tweak')}`, 'Undo & restore'].map(x => `<li>${ico('check', 'ico-ok')}${x}</li>`).join('')}</ul></div>
+        <div class="up-col pro"><h4>${ico('lock')}Full version${price ? ` <span class="up-price">${esc(price)}</span>` : ''}</h4><ul>${[`All ${ps.total} tweaks for this PC${ps.high ? ` (${ps.high} high-impact)` : ''}`, 'One-click Optimize: Recommended & Competitive', 'Every per-game tweak', 'Game booster, cleaner & startup manager', 'Auto-boost, the boost hotkey & DNS switcher', 'FPS overlay & Fortnite settings tuner', 'New live tweaks and every update'].map(x => `<li>${ico('check', 'ico-ok')}${x}</li>`).join('')}</ul></div>
       </div>
       <p class="up-note">${ico('shield')}Everything stays reversible. One key, one PC${price ? ', one payment' : ''}.</p>
       <label class="key-in"><span>Already bought a key? Enter it:</span>
@@ -1901,6 +1962,9 @@ function gamePending() {
 }
 
 function gameIntro(id) {
+  return gameIntroBase(id) + (id === 'fortnite' ? fnCard() : '');
+}
+function gameIntroBase(id) {
   const g = gameDef(id) || { id, name: id, studio: '', color: '#888' };
   const exe = ((S.data.env || {}).games || {})[id] || (id === 'fortnite' ? (S.data.env || {}).fortniteExe : '');
   return `<div class="intro">
@@ -2141,6 +2205,152 @@ function viewSearch() {
   }).join('');
 }
 
+// ───────────────────────── benchmark ─────────────────────────
+// Live numbers come from the app every second ("benchLive"); only the tiles and chart are redrawn.
+const B = { live: null, frames: [], fpsHist: [], results: null, targets: [], keep: null, label: 'before', secs: 60 };
+const fmt0 = v => (v == null || v < 0 || !isFinite(v)) ? '–' : String(Math.round(v));
+function benchEnter() {
+  api('benchStart').then(l => { if (l) benchOnLive(l); }).catch(e => { B.err = e.message; benchPaint(); });
+  if (!B.keep) B.keep = setInterval(() => { if (S.page === 'bench') api('benchStart').catch(() => {}); }, 10000);
+  if (B.results === null) api('benchList').then(r => { B.results = r || []; if (S.page === 'bench') rerenderView(); }).catch(() => { B.results = []; });
+  benchPaint();
+}
+function benchLeave() { if (B.keep) { clearInterval(B.keep); B.keep = null; } }
+function benchOnLive(l) {
+  B.live = l; B.err = l.error || '';
+  if (l.frames && l.frames.length) { B.frames.push(...l.frames); if (B.frames.length > 1500) B.frames = B.frames.slice(-1500); }
+  B.fpsHist.push(l.fps || 0); if (B.fpsHist.length > 120) B.fpsHist.shift();
+  if (S.page === 'bench') benchPaint();
+}
+function benchTile(id, label, val, unit, cls = '') { return `<div class="bt ${cls}" id="${id}"><span>${label}</span><b>${val}<small>${unit}</small></b></div>`; }
+function benchPaint() {
+  const l = B.live || {}, s = l.sensors || {};
+  const tiles = $('#bTiles');
+  if (tiles) tiles.innerHTML = [
+    benchTile('btFps', 'FPS', fmt0(l.fps), '', 'big'),
+    benchTile('btLow', '1% low', fmt0(l.low1), 'FPS'),
+    benchTile('btMs', 'Frame time', l.frameMs ? l.frameMs.toFixed(1) : '–', 'ms'),
+    benchTile('btCpu', 'CPU', fmt0(l.cpu), '%'),
+    benchTile('btGpu', 'GPU', fmt0(l.gpu), '%'),
+    benchTile('btTemp', 'GPU temp', fmt0(s.tempC), '°C'),
+    benchTile('btVram', 'VRAM', s.vramUsedGB >= 0 ? s.vramUsedGB.toFixed(1) : '–', s.vramTotalGB > 0 ? `/ ${s.vramTotalGB.toFixed(0)} GB` : 'GB'),
+    benchTile('btRam', 'RAM', l.ramUsedGB ? l.ramUsedGB.toFixed(1) : '–', 'GB'),
+  ].join('');
+  const tgt = $('#bTarget');
+  if (tgt) tgt.innerHTML = B.err ? `<span class="state-reset">${esc(B.err)}</span>` : l.pid ? `Measuring <b>${esc(l.game || l.process)}</b> <span class="dim">(${esc(l.process)})</span>` : 'Waiting for a game. Start one and it’s picked up automatically.';
+  benchChart();
+  const rec = $('#bRec');
+  if (rec) {
+    const r = l.rec;
+    rec.innerHTML = r ? `<div class="brec-on"><div><b>Recording ${esc(benchLabelName(r.label))}…</b> <span class="dim">${r.elapsed} of ${r.seconds} s${r.elapsed === 0 ? ' · waiting for the game to show frames' : ''}</span></div><div class="progress"><i style="width:${Math.round(r.elapsed / r.seconds * 100)}%"></i></div><button class="btn sm quiet" data-act="benchCancel" type="button">Cancel</button></div>`
+      : `<div class="brec-form">
+          <label>Label<select id="bLabel">${[['before', 'Before optimizing'], ['after', 'After optimizing'], ['test', 'Just a test']].map(([v, t]) => `<option value="${v}"${B.label === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+          <label>Length<select id="bSecs">${[30, 60, 120, 300].map(v => `<option value="${v}"${B.secs === v ? ' selected' : ''}>${v < 120 ? v + ' seconds' : v / 60 + ' minutes'}</option>`).join('')}</select></label>
+          <button class="btn primary" data-act="benchRecord" type="button">${ico('play')}Record benchmark</button>
+        </div>`;
+  }
+}
+function benchChart() {
+  const box = $('#bChart'); if (!box) return;
+  const xs = B.frames.slice(-600), W = 1000, H = 170, pad = 8;
+  if (!xs.length) { box.innerHTML = `<div class="lp-empty">Frame times show here while a game is running</div>`; return; }
+  const sorted = xs.slice().sort((a, b) => a - b), p99 = sorted[Math.floor(sorted.length * 0.99)] || 16;
+  const max = Math.max(10, p99 * 1.6);
+  const X = i => i / Math.max(1, xs.length - 1) * W, Y = v => H - pad - Math.min(v, max) / max * (H - pad * 2);
+  let d = ''; xs.forEach((v, i) => { d += (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
+  const spikes = xs.map((v, i) => v > sorted[Math.floor(sorted.length / 2)] * 2.5 && v > 8 ? `<rect x="${(X(i) - 2).toFixed(1)}" y="0" width="4" height="${H}"/>` : '').join('');
+  box.innerHTML = `<div class="lp-plot"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="lp-grid">${[0.25, 0.5, 0.75].map(f => `<line x1="0" x2="${W}" y1="${H * f}" y2="${H * f}"/>`).join('')}</g><g class="lp-lost">${spikes}</g><path class="lp-line" d="${d}" vector-effect="non-scaling-stroke"/></svg></div>
+    <div class="lp-y"><span>${max.toFixed(0)} ms</span><span>${(max / 2).toFixed(0)} ms</span><span>0</span></div>`;
+}
+const benchLabelName = l => ({ before: 'Before optimizing', after: 'After optimizing', test: 'Test' })[l] || l || 'Run';
+function benchCompare() {
+  const rs = (B.results || []).slice().reverse();
+  const after = rs.find(r => r.label === 'after');
+  const before = after ? rs.find(r => r.label === 'before' && r.game === after.game && r.when < after.when) : null;
+  if (!after || !before) return '';
+  const pct = (a, b) => b > 0 ? Math.round((a - b) / b * 100) : 0;
+  const p = pct(after.stats.avgFps, before.stats.avgFps), pl = pct(after.stats.low1, before.stats.low1);
+  return `<section class="panel spot bcompare"><div class="panel-b">
+    <div class="eyebrow">${esc(after.game)} · before vs after</div>
+    <div class="bc-big"><span>${fmt0(before.stats.avgFps)}</span>${ico('arrow')}<b>${fmt0(after.stats.avgFps)}</b><small>FPS average</small><em class="${p >= 0 ? 'up' : 'down'}">${p >= 0 ? '+' : ''}${p}%</em></div>
+    <div class="bc-row"><div><span>1% low</span><b>${fmt0(before.stats.low1)} → ${fmt0(after.stats.low1)}</b><em class="${pl >= 0 ? 'up' : 'down'}">${pl >= 0 ? '+' : ''}${pl}%</em></div><div><span>0.1% low</span><b>${fmt0(before.stats.low01)} → ${fmt0(after.stats.low01)}</b></div><div><span>Stutters</span><b>${before.stats.stutters} → ${after.stats.stutters}</b></div></div>
+    <div class="actions"><button class="btn sm primary" data-act="benchShare" data-before="${before.id}" data-after="${after.id}" type="button">${ico('ext')}Save as picture</button><span class="dim small">Great for TikTok and Discord.</span></div>
+  </div></section>`;
+}
+function viewBench() {
+  const d = S.data, locked = !proUnlocked();
+  const res = (B.results || []).slice().reverse();
+  return `
+  ${benchCompare()}
+  <section class="panel spot"><div class="panel-h"><h2>Live</h2><span class="dim small" id="bTarget"></span><span class="spacer"></span><button class="btn sm quiet" data-act="benchPick" type="button">Change game</button></div>
+    <div class="panel-b"><div class="btiles" id="bTiles"></div><div class="lp-chart bchart" id="bChart"></div>
+    <p class="dim small" style="margin:10px 0 0">Counted by Windows itself (the same way PresentMon does), so nothing touches the game and anti-cheat has nothing to see. Works with DirectX 9–12 games like Fortnite, Valorant and CS2. Vulkan and OpenGL games can't be measured.</p></div></section>
+  <section class="panel spot"><div class="panel-h"><h2>Record a benchmark</h2></div><div class="panel-b">
+    <p class="muted small" style="margin:0 0 12px">For a fair before and after, do the same thing both times, like the same Creative map or replay, for the whole run. Record <b>Before optimizing</b>, run Optimize, restart the game, then record <b>After optimizing</b>.</p>
+    <div id="bRec"></div></div></section>
+  <section class="panel spot"><div class="panel-h"><h2>FPS overlay</h2>${locked ? `<span class="pro-tag">${ico('lock')}Key</span>` : ''}</div><div class="panel-b">
+    ${setRow('overlay', 'Show FPS on top of your game', 'A small box in the corner with FPS, 1% low, CPU, GPU and temperature. It’s a normal window, not injected into the game, so it’s safe with anti-cheat. Shows over games in windowed or borderless (windowed fullscreen) mode.', !!d.overlay)}
+    <label class="optline" style="margin-top:10px">Corner <select id="ovCorner">${['Top left', 'Top right', 'Bottom left', 'Bottom right'].map((t, i) => `<option value="${i}"${(d.overlayCorner || 0) === i ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+  </div></section>
+  <section class="panel spot"><div class="panel-h"><h2>Your runs</h2></div><div class="panel-b">
+    ${B.results === null ? '<p class="dim">Loading…</p>' : !res.length ? '<p class="dim">No benchmarks yet. Start a game and press Record.</p>' : `<table class="btable"><thead><tr><th>When</th><th>Game</th><th>Label</th><th>Avg FPS</th><th>1% low</th><th>0.1% low</th><th>Stutters</th><th></th></tr></thead><tbody>
+      ${res.map(r => `<tr><td>${esc(fmtDate(new Date(r.when).toISOString()))}</td><td>${esc(r.game)}</td><td>${esc(benchLabelName(r.label))}</td><td><b>${fmt0(r.stats.avgFps)}</b></td><td>${fmt0(r.stats.low1)}</td><td>${fmt0(r.stats.low01)}</td><td>${r.stats.stutters}</td><td><button class="btn sm quiet" data-act="benchDel" data-id="${esc(r.id)}" type="button" aria-label="Delete">${ico('x')}</button></td></tr>`).join('')}
+    </tbody></table>`}
+  </div></section>`;
+}
+// The share card: drawn on a canvas, saved to Pictures\Astro Tweaks.
+function benchShare(before, after) {
+  const c = document.createElement('canvas'); c.width = 1080; c.height = 1080;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 1080, 1080); grd.addColorStop(0, '#1a0b3d'); grd.addColorStop(1, '#4c1d95');
+  g.fillStyle = grd; g.fillRect(0, 0, 1080, 1080);
+  g.fillStyle = 'rgba(255,255,255,.08)'; for (let i = 0; i < 80; i++) { g.beginPath(); g.arc((i * 137) % 1080, (i * 251) % 1080, (i % 3) + 1, 0, 7); g.fill(); }
+  g.fillStyle = '#fff'; g.font = '800 56px Manrope, Segoe UI, sans-serif'; g.fillText(after.game, 80, 150);
+  g.fillStyle = 'rgba(255,255,255,.7)'; g.font = '600 34px Manrope, Segoe UI, sans-serif'; g.fillText('Before vs after Astro Tweaks', 80, 205);
+  const pct = Math.round((after.stats.avgFps - before.stats.avgFps) / before.stats.avgFps * 100);
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '800 150px Manrope, Segoe UI, sans-serif'; g.fillText(fmt0(before.stats.avgFps), 80, 470);
+  g.fillStyle = '#fff'; g.font = '800 200px Manrope, Segoe UI, sans-serif'; g.fillText(fmt0(after.stats.avgFps), 470, 490);
+  g.fillStyle = '#C4A7FF'; g.font = '700 42px Manrope, Segoe UI, sans-serif'; g.fillText('→', 380, 450); g.fillText('average FPS  ' + (pct >= 0 ? '+' : '') + pct + '%', 80, 570);
+  const row = (y, label, a, b) => { g.fillStyle = 'rgba(255,255,255,.6)'; g.font = '600 36px Manrope, Segoe UI, sans-serif'; g.fillText(label, 80, y); g.fillStyle = '#fff'; g.font = '800 44px Manrope, Segoe UI, sans-serif'; g.fillText(a + '  →  ' + b, 470, y); };
+  row(700, '1% low', fmt0(before.stats.low1), fmt0(after.stats.low1));
+  row(780, '0.1% low', fmt0(before.stats.low01), fmt0(after.stats.low01));
+  row(860, 'Stutters', before.stats.stutters, after.stats.stutters);
+  g.fillStyle = '#fff'; g.font = '800 40px Manrope, Segoe UI, sans-serif'; g.fillText('Astro Tweaks', 80, 1000);
+  g.fillStyle = 'rgba(255,255,255,.6)'; g.font = '600 30px Manrope, Segoe UI, sans-serif'; g.fillText('astrotweaks.app', 700, 1000);
+  const b64 = c.toDataURL('image/png').split(',')[1];
+  api('benchSaveImage', { png: b64 }).then(() => toast('Saved to Pictures › Astro Tweaks.', 'ok')).catch(e => toast(e.message, 'err'));
+}
+async function benchPick() {
+  const list = await api('benchTargets').catch(() => []);
+  openModal(`
+    <div class="dialog-h"><div><h2>What should be measured?</h2><p>Apps showing frames right now. Pick your game, or leave it on automatic.</p></div><button class="btn quiet x" data-close type="button" aria-label="Close">${ico('x')}</button></div>
+    <div class="dialog-b"><div class="bpick">
+      <button class="btn ghost" data-act="benchTarget" data-pid="0" type="button">Automatic (recommended)</button>
+      ${(list || []).map(t => `<button class="btn ghost" data-act="benchTarget" data-pid="${t.pid}" type="button"><b>${esc(t.name)}</b><span class="dim small">${esc(t.process)} · ${fmt0(t.fps)} FPS</span></button>`).join('') || '<p class="dim">Nothing is drawing frames right now. Start your game first.</p>'}
+    </div></div>`, true);
+}
+
+// ───────────────────────── Fortnite settings tuner ─────────────────────────
+function fnCard() {
+  const f = S.fn;
+  if (f === undefined) { S.fn = null; api('fnSettings').then(r => { S.fn = r; if (S.page.startsWith('cat:')) rerenderView(); }).catch(() => { S.fn = { found: false }; }); }
+  if (!f) return `<section class="panel spot fncard"><div class="panel-b"><p class="dim">Reading Fortnite's settings…</p></div></section>`;
+  const c = f.current || {}, locked = !proUnlocked(), hz = f.refreshHz || 0;
+  const caps = [[0, 'Unlimited'], ...(hz ? [[hz, `${hz} (your screen)`]] : []), ...[144, 165, 240, 360].filter(v => v !== hz).map(v => [v, String(v)])];
+  return `<section class="panel spot fncard"><div class="panel-h"><h2>Fortnite settings</h2>${locked ? `<span class="pro-tag">${ico('lock')}Key</span>` : ''}</div><div class="panel-b">
+    ${!f.found ? `<p class="muted">Fortnite's settings file wasn't found. Open Fortnite once, close it, then come back.</p>` : `
+    <div class="fn-now">${[['Rendering', c.mode], ['FPS cap', c.fpsCap], ['V-Sync', c.vsync], ['View distance', c.viewDistance], ['Shadows', c.shadows], ['Textures', c.textures], ['Effects', c.effects]].map(([k, v]) => `<div><span>${k}</span><b>${esc(v || '–')}</b></div>`).join('')}</div>
+    <p class="muted small" style="margin:12px 0">Sets Fortnite's own settings for more FPS. Your sensitivity, keybinds and everything else stay exactly as they are, and your current file is backed up first.</p>
+    <div class="fn-presets">
+      <button class="fn-p${S.fnPreset === 'max' || !S.fnPreset ? ' sel' : ''}" data-act="fnPreset" data-p="max" type="button"><b>Max FPS</b><span>Performance mode, everything low, view distance medium. The most frames on any PC.</span></button>
+      <button class="fn-p${S.fnPreset === 'balanced' ? ' sel' : ''}" data-act="fnPreset" data-p="balanced" type="button"><b>Balanced</b><span>Keeps your rendering mode and textures, turns off the costly effects and shadows.</span></button>
+    </div>
+    <label class="optline">FPS cap <select id="fnCap">${caps.map(([v, t]) => `<option value="${v}"${(S.fnCap ?? (hz || 0)) == v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+    ${f.running ? `<p class="state-reset" style="margin:10px 0 0">Close Fortnite first. It saves its own settings when it quits.</p>` : ''}
+    <div class="actions" style="margin-top:12px"><button class="btn primary" data-act="fnApply" type="button"${f.running ? ' disabled' : ''}>${locked ? ico('lock') : ico('check')}Apply to Fortnite</button>${f.backups ? `<button class="btn quiet" data-act="fnRestore" type="button"${f.running ? ' disabled' : ''}>${ico('undo')}Put my old settings back</button>` : ''}</div>`}
+  </div></section>`;
+}
+
 // ───────────────────────── tools ─────────────────────────
 // Booster, cleaner and startup manager need a key. The scan still runs, so the lock shows
 // what Astro Tweaks actually found on this PC.
@@ -2344,6 +2554,7 @@ async function afterTool() {
     else if (S.checkup && S.scanStamp) animateCheckup();
   }
   if (S.page === 'network') drawLivePing(true);
+  if (S.page === 'bench') benchEnter(); else benchLeave();
   if (S.page === 'booster') {
     if (!S.booster) api('boostStatus').then(b => { S.booster = b; if (S.page === 'booster') rerenderView(); }).catch(() => {});
     if (S.bgApps === null) api('bgApps').then(a => { S.bgApps = a || []; if (S.page === 'booster') rerenderView(); }).catch(() => { S.bgApps = []; });
@@ -2419,6 +2630,7 @@ function openOptimize() {
         ${card(2, 'Competitive', comp, ['Everything in Recommended', 'Adds high priority for your games, boot timer tweaks, exclusive fullscreen, interrupt moderation off, memory and scheduler tuning', 'Uses a bit more power at idle; a few take effect after a restart'])}
       </div>
       ${!proUnlocked() && lockedFor(2).length ? `<div class="paybar compact"><span class="pb-ico">${ico('lock')}</span><div class="pb-t"><b>${lockedFor(2).length} fixes are locked</b><small>The free version only applies a few sample tweaks. A key adds the rest.</small></div><button class="btn sm primary" data-act="upgrade" type="button">Unlock</button></div>` : ''}
+      ${!(B.results || []).some(r => r.label === 'before') ? `<p class="muted small" style="margin:14px 0 0">${ico('gauge')} Want proof it worked? <a href="#" data-act="benchFirst" style="color:var(--accent);font-weight:700">Record a “before” benchmark first</a>, then compare after.</p>` : ''}
       <label class="optline"><input class="cb" type="checkbox" id="optRestore" checked>Create a System Restore point first (recommended, takes about a minute)</label>
       <p class="dim small" style="margin:10px 0 0">Manual-only tweaks (security trade-offs and appearance) are never included. Your sensitivity and game settings are never touched.</p>
     </div>
@@ -2568,7 +2780,13 @@ document.addEventListener('click', async e => {
     case 'setting': {
       const key = b.dataset.key;
       if (key === 'motion') { applyMotion(document.documentElement.classList.contains('motion-off'), true); rerenderView(); break; }
-      if ((key === 'autoboost' || key === 'hotkey' || key === 'autoClean' || key === 'memGuard') && !proUnlocked()) { showUpgrade(); break; }
+      if ((key === 'autoboost' || key === 'hotkey' || key === 'autoClean' || key === 'memGuard' || key === 'autoReapply' || key === 'overlay') && !proUnlocked()) { showUpgrade(); break; }
+      if (key === 'overlay') {
+        const want = !S.data.overlay, corner = +(($('#ovCorner') || {}).value || 0);
+        b.disabled = true;
+        try { await api('overlaySet', { on: want, corner }); S.data.overlay = want; S.data.overlayCorner = corner; toast(want ? 'Overlay on. It shows over games in windowed or borderless mode.' : 'Overlay off.', 'ok'); } catch (err) { toast(err.message, 'err', 7000); }
+        rerenderView(); break;
+      }
       if (key === 'defaultBat') {
         if (!(S.data.defaultBat && S.data.defaultBat.on)) { askDefaultBat(true); break; } // switching on always asks first
         b.disabled = true;
@@ -2580,7 +2798,7 @@ document.addEventListener('click', async e => {
       try {
         await api('setSetting', { key, on: !cur });
         if (key === 'startup') S.startupOn = !cur; else S.data[key] = !cur;
-        toast({ startup: !cur ? 'Astro Tweaks will start with Windows.' : 'Astro Tweaks won’t start with Windows.', hotkey: !cur ? 'Hotkey on. Press Ctrl + Alt + B to boost.' : 'Hotkey off.', autoUpdate: !cur ? 'Astro Tweaks will check for updates when it opens.' : 'Automatic update checks are off.', autoClean: !cur ? 'Astro Tweaks will clean up once a week.' : 'Weekly clean-up is off.', memGuard: !cur ? 'Memory guard is on while you play.' : 'Memory guard is off.' }[key], 'ok');
+        toast({ startup: !cur ? 'Astro Tweaks will start with Windows.' : 'Astro Tweaks won’t start with Windows.', hotkey: !cur ? 'Hotkey on. Press Ctrl + Alt + B to boost.' : 'Hotkey off.', autoUpdate: !cur ? 'Astro Tweaks will check for updates when it opens.' : 'Automatic update checks are off.', autoClean: !cur ? 'Astro Tweaks will clean up once a week.' : 'Weekly clean-up is off.', autoReapply: !cur ? 'Tweaks Windows changes back will be fixed automatically.' : 'Automatic fixing is off.', memGuard: !cur ? 'Memory guard is on while you play.' : 'Memory guard is off.' }[key], 'ok');
       } catch (err) { toast(err.message, 'err', 7000); }
       rerenderView(); break;
     }
@@ -2592,6 +2810,33 @@ document.addEventListener('click', async e => {
     case 'upgrade': showUpgrade(); break;
     case 'removeKey': if (await confirmBox(LIC().trial ? 'End your trial now?' : 'Remove your key from this PC?', LIC().trial ? 'The paid tweaks your trial unlocked are undone first, then the app goes back to the free version.' : 'The app goes back to the free version here. You can enter the key again any time, on this PC only.', LIC().trial ? 'End trial' : 'Remove key', !!LIC().trial)) { try { S.data.license = await api('removeKey'); toast('Key removed from this PC.', 'info'); } catch (err) { toast(err.message, 'err'); } renderNav(); rerenderView(); } break;
     case 'activateKey': await doActivate(); break;
+    case 'benchFirst': e.preventDefault(); closeModal(); B.label = 'before'; go('bench'); break;
+    case 'fixReset': {
+      const ids = T().filter(t => st(t.id) === 'reset' && !locked(t)).map(t => t.id);
+      if (!ids.length) { showUpgrade(); break; }
+      runJob('apply', { ids }, 'Fixing tweaks Windows changed back', 'Starting…'); break;
+    }
+    case 'benchRecord': {
+      B.label = ($('#bLabel') || {}).value || 'before'; B.secs = +(($('#bSecs') || {}).value || 60);
+      api('benchRecord', { seconds: B.secs, label: B.label }).then(() => toast('Recording. Play normally until it finishes.', 'info')).catch(e => toast(e.message, 'err', 7000));
+      break;
+    }
+    case 'benchCancel': api('benchCancel').catch(() => {}); break;
+    case 'benchPick': benchPick(); break;
+    case 'benchTarget': api('benchTarget', { pid: +b.dataset.pid }).catch(() => {}); B.frames = []; closeModal(); break;
+    case 'benchDel': api('benchDelete', { id: b.dataset.id }).then(r => { B.results = r || []; rerenderView(); }).catch(() => {}); break;
+    case 'benchShare': { const rs = B.results || []; const bf = rs.find(r => r.id === b.dataset.before), af = rs.find(r => r.id === b.dataset.after); if (bf && af) benchShare(bf, af); break; }
+    case 'fnPreset': S.fnPreset = b.dataset.p; rerenderView(); break;
+    case 'fnApply': {
+      if (!proUnlocked()) { showUpgrade(); break; }
+      S.fnCap = +(($('#fnCap') || {}).value || 0);
+      b.disabled = true;
+      api('fnApply', { preset: S.fnPreset || 'max', cap: S.fnCap }).then(r => { S.fn = r; toast('Fortnite settings applied. Your old file is backed up.', 'ok', 5000); rerenderView(); }).catch(e => { toast(e.message, 'err', 7000); b.disabled = false; });
+      break;
+    }
+    case 'fnRestore':
+      api('fnRestore').then(r => { S.fn = r; toast('Your old Fortnite settings are back.', 'ok'); rerenderView(); }).catch(e => toast(e.message, 'err', 7000));
+      break;
     case 'defaultBatAnswer': answerDefaultBat(b.dataset.on === '1'); break;
     case 'defaultBatShow': askDefaultBat(true); break;
     case 'myPurchases': e.preventDefault(); if (S.data.server) api('open', { target: S.data.server + '/purchases' }).catch(() => {}); break;
@@ -2705,6 +2950,15 @@ $('#view').addEventListener('scroll', updateScrollBar, { passive: true });
 on('hotkeyboost', d => toast(`Boosted${d.game ? ' ' + d.game : ''}: ${Math.max(0, Math.round(d.freedMB))} MB memory freed, timer tightened.`, 'ok', 5000));
 on('autoCleaned', r => { S.data.lastAutoClean = new Date().toISOString(); if (r.freedMB >= 1) toast(`Weekly clean-up freed ${fmtMB(r.freedMB)}.`, 'ok', 5000); if (S.page === 'settings') rerenderView(); });
 on('memGuard', r => toast(`Memory guard cleared ${fmtMB(r.freedMB)} so your game has room.`, 'ok', 4000));
+on('benchLive', l => benchOnLive(l));
+on('benchDone', r => {
+  if (r && r.error) { toast(r.error, 'err', 8000); return; }
+  B.results = (B.results || []).concat([r]);
+  toast(`${r.game}: ${fmt0(r.stats.avgFps)} FPS average, 1% low ${fmt0(r.stats.low1)}.`, 'ok', 6000);
+  if (r.label === 'before') setTimeout(() => toast('Now run Optimize, restart the game and record “After optimizing”.', 'info', 7000), 1200);
+  if (S.page === 'bench') rerenderView();
+});
+on('reapplied', r => { if (r.count) { toast(`Fixed ${plural(r.count, 'tweak')} that ${r.afterUpdate ? 'a Windows update' : 'something'} had changed back.`, 'ok', 6000); refreshStates(); } });
 on('defaultBatInfo', info => {
   S.data.defaultBat = info || { available: false };
   if (S.consentOpen && !info.available) { S.consentOpen = false; closeModal(); }

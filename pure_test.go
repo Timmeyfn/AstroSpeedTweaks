@@ -110,3 +110,48 @@ func TestDefaultBatDecision(t *testing.T) {
 		}
 	}
 }
+
+func TestFrameStats(t *testing.T) {
+	var ms []float64
+	for i := 0; i < 990; i++ {
+		ms = append(ms, 5) // 200 FPS
+	}
+	for i := 0; i < 10; i++ {
+		ms = append(ms, 20) // 10 slow frames (50 FPS)
+	}
+	ms = append(ms, 5000) // a pause: ignored
+	s := frameStats(ms)
+	if s.Frames != 1000 || s.Low1 != 50 || s.MaxFPS != 200 || s.MinFPS != 50 || s.StutterN != 10 {
+		t.Fatalf("%+v", s)
+	}
+	if s.AvgFPS != 194.2 { // 1000 frames in 5.15 s
+		t.Fatalf("avg %v", s.AvgFPS)
+	}
+	if z := frameStats(nil); z.Frames != 0 {
+		t.Fatal("empty")
+	}
+}
+
+func TestFortniteIni(t *testing.T) {
+	in := "[/Script/FortniteGame.FortGameUserSettings]\r\nMouseSensitivity=0.07\r\nbUseVSync=True\r\nFrameRateLimit=60.000000\r\n\r\n[ScalabilityGroups]\r\nsg.ShadowQuality=3\r\n"
+	out := iniSet(in, fnPreset("max", 240))
+	if iniGet(out, fnSec, "MouseSensitivity") != "0.07" {
+		t.Fatal("sensitivity must not change")
+	}
+	if iniGet(out, fnSec, "bUseVSync") != "False" || iniGet(out, fnSec, "FrameRateLimit") != "240.000000" {
+		t.Fatalf("fps settings: %q", out)
+	}
+	if iniGet(out, fnSG, "sg.ShadowQuality") != "0" || iniGet(out, fnRHI, "PreferredFeatureLevel") != "es31" {
+		t.Fatalf("quality: %q", out)
+	}
+	if !strings.Contains(out, "\r\n") || strings.Count(out, "[ScalabilityGroups]") != 1 || strings.Count(out, "sg.ShadowQuality") != 1 {
+		t.Fatalf("layout: %q", out)
+	}
+	s := fnSummary(out)
+	if s["mode"] != "Performance mode" || s["fpsCap"] != "240 FPS" || s["shadows"] != "Low" || s["vsync"] != "Off" {
+		t.Fatalf("summary %v", s)
+	}
+	if fnSummary(iniSet(out, fnPreset("max", 0)))["fpsCap"] != "Unlimited" {
+		t.Fatal("unlimited cap")
+	}
+}

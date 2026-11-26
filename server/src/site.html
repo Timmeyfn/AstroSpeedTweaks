@@ -190,7 +190,7 @@ h2{font-size:clamp(34px,5.4vw,62px);letter-spacing:-.045em;font-weight:800;line-
 .urow em{margin-left:auto;font-style:normal;font-weight:800;color:var(--ink3);font-size:13px}
 
 /* small features */
-.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:20px}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
 @media(max-width:980px){.sgrid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.sgrid{grid-template-columns:1fr}}
 .scard{border-radius:22px;border:1px solid var(--line);background:var(--card);padding:24px;transition:transform .5s var(--out),border-color .3s,box-shadow .5s;opacity:0;transform:translateY(30px)}
@@ -345,7 +345,7 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
       <a class="btn primary magnet" href="/download"><svg class="i"><use href="#i-win"/></svg><span>Download for Windows</span><svg class="i arr"><use href="#i-arrow"/></svg></a>
       <a class="btn ghost magnet" href="#pricing">See what a key unlocks</a>
     </div>
-    <p class="compat">Windows 10+<i></i>64-bit<i></i>Never touches your sensitivity or game files</p>
+    <p class="compat">Windows 10+<i></i>64-bit<i></i>Never touches your sensitivity or the game itself</p>
   </div>
   <div class="scroll-hint" aria-hidden="true"></div>
 </section>
@@ -412,6 +412,8 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
     <div class="scard" style="transition-delay:.08s"><div class="ic"><svg class="i"><use href="#i-broom"/></svg></div><h4>System cleaner</h4><p>Temp files, caches and leftovers gone. Your settings, keybinds and replays are never touched.</p><span class="k">FULL VERSION</span></div>
     <div class="scard" style="transition-delay:.16s"><div class="ic"><svg class="i"><use href="#i-pad"/></svg></div><h4>Per-game tweaks</h4><p>GPU choice, priority and network tagging for each game you have installed.</p><span class="k">FULL VERSION</span></div>
     <div class="scard" style="transition-delay:.24s"><div class="ic"><svg class="i"><use href="#i-spark"/></svg></div><h4>Live tweaks</h4><p>New tweaks and new games arrive in the app by themselves. No reinstall.</p><span class="k">FULL VERSION</span></div>
+    <div class="scard" style="transition-delay:.32s"><div class="ic"><svg class="i"><use href="#i-layers"/></svg></div><h4>Benchmark &amp; FPS overlay</h4><p>Live FPS, 1% lows, CPU and GPU. Record before and after Optimize and save the result as a picture.</p><span class="k">FREE · OVERLAY WITH A KEY</span></div>
+    <div class="scard" style="transition-delay:.4s"><div class="ic"><svg class="i"><use href="#i-pad"/></svg></div><h4>Fortnite settings tuner</h4><p>Performance mode, the right FPS cap and every costly setting off, in one click. Sensitivity and keybinds untouched.</p><span class="k">FULL VERSION</span></div>
   </div>
 </div></section>
 
@@ -419,7 +421,7 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
   <div class="intro c">
     <span class="label reveal">Your games</span>
     <h2 id="gh" class="kin"><span class="kw">Tuned</span> <span class="kw">for</span> <span class="kw">what</span> <span class="kw">you</span> <span class="kw">play.</span></h2>
-    <p class="reveal">Astro Tweaks finds your installed games and tunes how Windows treats each one. It never edits game files or anything anti-cheat looks at.</p>
+    <p class="reveal">Astro Tweaks finds your installed games and tunes how Windows treats each one. It never touches the game itself or anything anti-cheat looks at.</p>
   </div></div>
   <div class="gmarq"><div class="grow" id="g1"></div></div>
   <div class="gmarq"><div class="grow rev" id="g2"></div></div>
@@ -448,6 +450,7 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
         <li><svg class="i"><use href="#i-check"/></svg>All per-game tweaks</li>
         <li><svg class="i"><use href="#i-check"/></svg>Game booster, cleaner &amp; startup manager</li>
         <li><svg class="i"><use href="#i-check"/></svg>Auto-boost, boost hotkey &amp; DNS switcher</li>
+        <li><svg class="i"><use href="#i-check"/></svg>FPS overlay &amp; Fortnite settings tuner</li>
         <li><svg class="i"><use href="#i-check"/></svg>New live tweaks and every update</li>
       </ul>
     </article>
@@ -458,7 +461,7 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
       <a class="btn ghost magnet" href="/download"><svg class="i"><use href="#i-down"/></svg>Download free</a>
       <ul>
         <li><svg class="i"><use href="#i-check"/></svg>Dashboard &amp; PC Checkup scan</li>
-        <li><svg class="i"><use href="#i-check"/></svg>Ping test</li>
+        <li><svg class="i"><use href="#i-check"/></svg>Ping test &amp; FPS benchmark</li>
         <li><svg class="i"><use href="#i-check"/></svg>A few sample tweaks</li>
         <li><svg class="i"><use href="#i-check"/></svg>Undo &amp; restore</li>
         <li class="no"><svg class="i"><use href="#i-x"/></svg>Most tweaks and tools are locked</li>
@@ -487,7 +490,7 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--ink2);fo
   </div>
   <div class="qlist">
     <details class="reveal"><summary>Is it safe?<span class="pl"><svg class="i" style="width:15px;height:15px"><use href="#i-plus"/></svg></span></summary><div class="ans"><p>Yes. Astro Tweaks saves the exact value of every setting before changing it, offers a Windows restore point first, and lets you undo any change. It never touches your sensitivity, your in-game settings or anti-cheat.</p></div></details>
-    <details class="reveal"><summary>Will it get me banned?<span class="pl"><svg class="i" style="width:15px;height:15px"><use href="#i-plus"/></svg></span></summary><div class="ans"><p>No. It only changes Windows settings. It never edits game files, game memory or anything anti-cheat looks at.</p></div></details>
+    <details class="reveal"><summary>Will it get me banned?<span class="pl"><svg class="i" style="width:15px;height:15px"><use href="#i-plus"/></svg></span></summary><div class="ans"><p>No. It changes Windows settings and, if you ask it to, Fortnite's own settings file. It never touches the game itself, its memory or anything anti-cheat looks at. The FPS counter reads frame timings from Windows, with nothing injected into the game.</p></div></details>
     <details class="reveal"><summary>Does a key work on more than one PC?<span class="pl"><svg class="i" style="width:15px;height:15px"><use href="#i-plus"/></svg></span></summary><div class="ans"><p>No. Each key locks to the first PC that activates it. If you get a new PC, <span class="support">get in touch</span> and it can be moved over.</p></div></details>
     <details class="reveal"><summary>Is it a subscription?<span class="pl"><svg class="i" style="width:15px;height:15px"><use href="#i-plus"/></svg></span></summary><div class="ans"><p>No. A key is a one-time payment and never expires. Updates are included.</p></div></details>
     <details class="reveal"><summary>I lost my key. What now?<span class="pl"><svg class="i" style="width:15px;height:15px"><use href="#i-plus"/></svg></span></summary><div class="ans"><p>Check <a href="/purchases" style="color:var(--accent);font-weight:700">My purchases</a> on the PC you bought it on, open the page you saw after paying, or <span class="support">contact support</span> with the email you paid with.</p></div></details>
